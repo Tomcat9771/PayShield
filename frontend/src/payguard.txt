@@ -1,0 +1,121 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
+// ✅ HARD API BASE (never relative)
+const API_BASE = "https://guardpay-api.vercel.app";
+
+export default function PayGuard() {
+  const { guardId } = useParams();
+
+  const [guard, setGuard] = useState(null);
+  const [amount, setAmount] = useState(20);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!guardId) {
+    return <p>Invalid payment link.</p>;
+  }
+
+  // 🔹 Load guard info
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+
+    fetch(`${API_BASE}/api/guards/public?id=${guardId}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Guard not found");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setGuard(data);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setError("This guard could not be found.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [guardId]);
+
+  // 🔹 Start PayFast payment
+  async function handlePay() {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/payments/payfast/create`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guard_id: guardId,
+            amount,
+            payout_method: "EFT",
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Payment initialization failed");
+      }
+
+      const data = await res.json();
+
+      if (!data?.action || !data?.fields) {
+        throw new Error("Invalid PayFast response");
+      }
+
+      // 🔹 Full redirect to PayFast
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.action;
+
+      Object.entries(data.fields).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err) {
+      console.error(err);
+      setError("Payment failed. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (!guard) return <p>Loading…</p>;
+
+  return (
+    <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
+      <h2>Support this guard</h2>
+
+      <strong>{guard.full_name}</strong>
+      <div>{guard.site_location}</div>
+
+      <p>Your payment is processed securely and paid out daily.</p>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+        <button onClick={() => setAmount(10)}>R10</button>
+        <button onClick={() => setAmount(20)}>R20</button>
+        <button onClick={() => setAmount(50)}>R50</button>
+      </div>
+
+      <br />
+
+      <button disabled={loading} onClick={handlePay}>
+        {loading ? "Redirecting…" : `Pay R${amount}`}
+      </button>
+    </div>
+  );
+}

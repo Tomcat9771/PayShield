@@ -1,0 +1,259 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+/* ===== Modal base styles ===== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 80px); /* scrolling fix */
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  scrollbar-width: thin;
+}
+
+
+.modal-card h3 {
+  margin-top: 0;
+}
+
+.modal-card button {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* ===== Modal form improvements ===== */
+
+.modal-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.modal-card input,
+.modal-card select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background: #fff;
+}
+
+.modal-card input:focus,
+.modal-card select:focus {
+  outline: none;
+  border-color: #6b46c1; /* PayShield purple */
+  box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.modal-primary {
+  background: #6b46c1;
+  color: white;
+  border: none;
+}
+
+.modal-secondary {
+  background: #f3f3f3;
+  border: 1px solid #ccc;
+}
+.modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-card::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.25);
+  border-radius: 4px;
+}
+/* ===== Guards page styling ===== */
+
+.guard-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+}
+
+.guard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.guard-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.guard-site {
+  font-size: 13px;
+  color: #666;
+}
+
+.guard-status {
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guard-status.unverified {
+  color: #a15c00;
+}
+
+.guard-status.verified {
+  color: #166534;
+}
+
+.guard-bank-box {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.guard-actions button {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+
+.guard-actions button.primary {
+  background: #6b46c1;
+  color: white;
+  border: none;
+}
+
+.guard-actions button.warn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+}
+/* ===== Back button (global) ===== */
+
+.btn-back {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #ffffff;
+  color: #4b2aad;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-back:hover {
+  background: #f4f1ff;
+  border-color: #c4b5fd;
+}
+.page-back-button {
+  background: transparent;
+  border: 1px solid #d0cce6;
+  color: #6b46c1; /* PayShield purple */
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.page-back-button:hover {
+  background: rgba(107, 70, 193, 0.08);
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0; /* top:0 right:0 bottom:0 left:0 */
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-card {
+  background: #fff;
+  color: #111;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
