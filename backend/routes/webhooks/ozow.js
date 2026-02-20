@@ -17,19 +17,19 @@ router.post("/", async (req, res) => {
     const payload = req.body;
 
     console.log("---- OZOW WEBHOOK RECEIVED ----");
-    console.log("Payload:", payload);
 
-    // Always log webhook (never block processing)
+    // Log webhook safely
     try {
-  await supabase.from("webhook_logs").insert({
-    provider: "ozow",
-    payload,
-  });
-} catch (e) {
-  console.error("Webhook log failed:", e.message);
-}
+      await supabase.from("webhook_logs").insert({
+        provider: "ozow",
+        payload,
+      });
+    } catch (e) {
+      console.error("Webhook log failed:", e.message);
+    }
+
     /* ======================================
-       HASH VALIDATION (OFFICIAL OZOW ORDER)
+       HASH VALIDATION
     ====================================== */
 
     const {
@@ -82,6 +82,26 @@ router.post("/", async (req, res) => {
     console.log("✅ Hash verified");
 
     /* ======================================
+       BASIC VALIDATION
+    ====================================== */
+
+    if (CurrencyCode !== "ZAR") {
+      console.error("Invalid currency");
+      return res.status(400).send("Invalid currency");
+    }
+
+    const businessId = TransactionReference;
+    const gross = Number(Amount);
+    const purpose = Optional1 || "qr_payment";
+
+    console.log("Payment purpose:", purpose);
+
+    if (!businessId || !TransactionId || isNaN(gross)) {
+      console.error("Invalid required fields");
+      return res.status(200).send("Ignored");
+    }
+
+    /* ======================================
        STATUS NORMALISATION
     ====================================== */
 
@@ -91,71 +111,121 @@ router.post("/", async (req, res) => {
       case "COMPLETE":
         internalStatus = "COMPLETE";
         break;
-
       case "PENDING":
       case "PENDINGINVESTIGATION":
         internalStatus = "PENDING";
         break;
-
       case "CANCELLED":
       case "ERROR":
       case "ABANDONED":
         internalStatus = "FAILED";
         break;
-
       default:
         internalStatus = "FAILED";
     }
 
-    const businessId = TransactionReference;
-    const gross = Number(Amount);
+    /* ======================================
+       INSERT INTO PAYMENTS (IDEMPOTENCY)
+    ====================================== */
 
-    if (!businessId || !TransactionId || isNaN(gross)) {
-      console.error("Invalid required fields");
-      return res.status(200).send("Ignored");
+    const { data: paymentRow, error: paymentInsertError } =
+      await supabase
+        .from("payments")
+        .insert({
+          provider: "ozow",
+          provider_reference: TransactionId,
+          business_id: businessId,
+          purpose,
+          amount: gross,
+          provider_status: internalStatus,
+          raw_payload: payload,
+          processed: false
+        })
+        .select()
+        .single();
+
+    if (paymentInsertError) {
+      if (paymentInsertError.code === "23505") {
+        console.log("🔒 Payment already processed");
+        return res.status(200).send("Already processed");
+      }
+      console.error("Payment insert error:", paymentInsertError);
+      return res.status(500).send("Insert failed");
     }
 
     /* ======================================
-       FETCH EXISTING TRANSACTION
+       BRANCH BY PURPOSE
     ====================================== */
 
-    const { data: existing } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("provider_ref", TransactionId)
-      .maybeSingle();
+    if (purpose === "registration_fee") {
 
-    /* ======================================
-       CASE 1 — FIRST TIME WE SEE THIS TX
-    ====================================== */
-
-    if (!existing) {
-      // If not complete yet → insert status only
-      if (internalStatus !== "COMPLETE") {
-        await supabase.from("transactions").insert({
-          business_id: businessId,
-          provider_ref: TransactionId,
-          provider: "ozow",
-          status: internalStatus,
-          amount_gross: gross,
-          amount_net: 0,
-          ozow_fee: 0,
-          ozow_vat: 0,
-          platform_fee: 0,
-          platform_vat: 0,
-          payout_fee: 0,
-        });
-
-        console.log("🟡 Inserted initial non-complete status");
-        return res.status(200).send("Status recorded");
+      if (gross !== 150.00) {
+        console.error("Invalid registration fee amount");
+        return res.status(400).send("Invalid amount");
       }
 
-      // If COMPLETE on first notification → process fully
-      const fee = await calculateFees(gross, businessId);
+      if (internalStatus === "COMPLETE") {
+        const { error } = await supabase
+          .from("businesses")
+          .update({ registration_fee_paid: true })
+          .eq("id", businessId);
 
-      const { error } = await supabase.rpc(
-        "process_ozow_payment",
-        {
+        if (error) throw error;
+
+        console.log("🟢 Registration fee marked paid");
+      }
+
+    } else {
+
+      /* ======================================
+         QR PAYMENT LOGIC
+      ====================================== */
+
+      const { data: existing } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("provider_ref", TransactionId)
+        .maybeSingle();
+
+      if (!existing) {
+
+        if (internalStatus !== "COMPLETE") {
+          await supabase.from("transactions").insert({
+            business_id: businessId,
+            provider_ref: TransactionId,
+            provider: "ozow",
+            status: internalStatus,
+            amount_gross: gross,
+            amount_net: 0,
+            ozow_fee: 0,
+            ozow_vat: 0,
+            platform_fee: 0,
+            platform_vat: 0,
+            payout_fee: 0,
+          });
+
+        } else {
+
+          const fee = await calculateFees(gross, businessId);
+
+          await supabase.rpc("process_ozow_payment", {
+            p_business_id: businessId,
+            p_provider_ref: TransactionId,
+            p_amount_gross: fee.amount_gross,
+            p_ozow_fee: fee.ozow_fee,
+            p_ozow_vat: fee.ozow_vat,
+            p_platform_fee: fee.platform_fee,
+            p_platform_vat: fee.platform_vat,
+            p_payout_fee: fee.payout_fee,
+            p_amount_net: fee.amount_net,
+          });
+        }
+
+      } else if (existing.status !== "COMPLETE" && internalStatus === "COMPLETE") {
+
+        const fee = await calculateFees(gross, businessId);
+
+        await supabase.rpc("process_ozow_payment", {
           p_business_id: businessId,
           p_provider_ref: TransactionId,
           p_amount_gross: fee.amount_gross,
@@ -165,64 +235,30 @@ router.post("/", async (req, res) => {
           p_platform_vat: fee.platform_vat,
           p_payout_fee: fee.payout_fee,
           p_amount_net: fee.amount_net,
-        }
-      );
+        });
 
-      if (error) console.error("RPC error:", error);
-      else console.log("🟢 COMPLETE processed + ledger credited");
+      } else if (existing.status !== internalStatus) {
 
-      return res.status(200).send("Completed");
+        await supabase
+          .from("transactions")
+          .update({ status: internalStatus })
+          .eq("provider_ref", TransactionId);
+      }
     }
 
     /* ======================================
-       CASE 2 — DUPLICATE COMPLETE
+       MARK PAYMENT PROCESSED
     ====================================== */
 
-    if (existing.status === "COMPLETE") {
-      console.log("🔒 Already COMPLETE. Ignoring downgrade or duplicate.");
-      return res.status(200).send("Already complete");
-    }
+    await supabase
+      .from("payments")
+      .update({
+        processed: true,
+        processed_at: new Date()
+      })
+      .eq("id", paymentRow.id);
 
-    /* ======================================
-       CASE 3 — TRANSITION TO COMPLETE
-    ====================================== */
-
-    if (internalStatus === "COMPLETE") {
-      const fee = await calculateFees(gross, businessId);
-
-      const { error } = await supabase.rpc(
-        "process_ozow_payment",
-        {
-          p_business_id: businessId,
-          p_provider_ref: TransactionId,
-          p_amount_gross: fee.amount_gross,
-          p_ozow_fee: fee.ozow_fee,
-          p_ozow_vat: fee.ozow_vat,
-          p_platform_fee: fee.platform_fee,
-          p_platform_vat: fee.platform_vat,
-          p_payout_fee: fee.payout_fee,
-          p_amount_net: fee.amount_net,
-        }
-      );
-
-      if (error) console.error("RPC error:", error);
-      else console.log("🟢 Transitioned to COMPLETE + ledger credited");
-
-      return res.status(200).send("Completed");
-    }
-
-    /* ======================================
-       CASE 4 — STATUS UPDATE ONLY
-    ====================================== */
-if (existing.status !== internalStatus) {
-  await supabase
-    .from("transactions")
-    .update({ status: internalStatus })
-    .eq("provider_ref", TransactionId);
-
-  console.log("🔄 Status updated to:", internalStatus);
-}
-     return res.status(200).send("Status updated");
+    return res.status(200).send("OK");
 
   } catch (err) {
     console.error("❌ Webhook error:", err);
