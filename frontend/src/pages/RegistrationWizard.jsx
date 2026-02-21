@@ -97,111 +97,119 @@ export default function RegistrationWizard() {
     return required.every(doc => documents[doc] || isEditMode);
   };
 
-  const handleSubmit = async () => {
-    if (!validateDocuments()) {
-      setError("Please upload required documents.");
-      return;
-    }
+const handleSubmit = async () => {
+  if (!validateDocuments()) {
+    setError("Please upload required documents.");
+    return;
+  }
 
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
 
-      if (isEditMode) {
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
+    let currentBusinessId;
+    let currentRegistrationId;
 
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+    if (isEditMode) {
+      /* =========================
+         FETCH CURRENT IDS
+      ========================= */
+      const { data: business } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
 
-  const { data: registration } = await supabase
-    .from("business_registrations")
-    .select("id")
-    .eq("business_id", business.id)
-    .single();
+      const { data: registration } = await supabase
+        .from("business_registrations")
+        .select("id")
+        .eq("business_id", business.id)
+        .single();
 
-  // Update business
-  await supabase
-    .from("businesses")
-    .update(form)
-    .eq("id", business.id);
-
-  // Reset registration status
-  await supabase
-    .from("business_registrations")
-    .update({
-      status: "pending",
-      rejection_reason: null,
-      reviewed_at: null,
-      reviewed_by: null
-    })
-    .eq("id", registration.id);
-
-  setBusinessId(business.id);
-  setRegistrationId(registration.id);
-}
-        /* =========================
-           CREATE NEW BUSINESS
-        ========================= */
-        const { data: newBusiness } = await supabase
-          .from("businesses")
-          .insert({
-            ...form,
-            user_id: user.id,
-            registration_fee_paid: false
-          })
-          .select()
-          .single();
-
-        const { data: newReg } = await supabase
-          .from("business_registrations")
-          .insert({
-            business_id: newBusiness.id,
-            status: "pending"
-          })
-          .select()
-          .single();
-
-        setBusinessId(newBusiness.id);
-        setRegistrationId(newReg.id);
-      }
+      currentBusinessId = business.id;
+      currentRegistrationId = registration.id;
 
       /* =========================
-         UPLOAD NEW DOCUMENTS
+         UPDATE BUSINESS
       ========================= */
-      for (const [docType, file] of Object.entries(documents)) {
-        if (!file) continue;
+      await supabase
+        .from("businesses")
+        .update(form)
+        .eq("id", currentBusinessId);
 
-        const filePath = `${businessId}/${docType}-${Date.now()}`;
+      /* =========================
+         RESET REGISTRATION STATUS
+      ========================= */
+      await supabase
+        .from("business_registrations")
+        .update({
+          status: "pending",
+          rejection_reason: null,
+          reviewed_at: null,
+          reviewed_by: null
+        })
+        .eq("id", currentRegistrationId);
 
-        await supabase.storage
-          .from("business-documents")
-          .upload(filePath, file);
+    } else {
+      /* =========================
+         CREATE NEW BUSINESS
+      ========================= */
+      const { data: newBusiness } = await supabase
+        .from("businesses")
+        .insert({
+          ...form,
+          user_id: user.id,
+          registration_fee_paid: false
+        })
+        .select()
+        .single();
 
-        await supabase.from("business_documents").insert({
-          business_id: businessId,
-          registration_id: registrationId,
-          document_type: docType,
-          file_url: filePath,
-          verified: false
-        });
-      }
+      const { data: newReg } = await supabase
+        .from("business_registrations")
+        .insert({
+          business_id: newBusiness.id,
+          status: "pending"
+        })
+        .select()
+        .single();
 
-      navigate("/awaiting-approval");
-
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong.");
+      currentBusinessId = newBusiness.id;
+      currentRegistrationId = newReg.id;
     }
 
-    setLoading(false);
-  };
+    /* =========================
+       UPLOAD DOCUMENTS
+    ========================= */
+    for (const [docType, file] of Object.entries(documents)) {
+      if (!file) continue;
+
+      const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
+
+      await supabase.storage
+        .from("business-documents")
+        .upload(filePath, file);
+
+      await supabase.from("business_documents").insert({
+        business_id: currentBusinessId,
+        registration_id: currentRegistrationId,
+        document_type: docType,
+        file_url: filePath,
+        verified: false
+      });
+    }
+
+    navigate("/awaiting-approval");
+
+  } catch (err) {
+    console.error(err);
+    setError("Something went wrong.");
+  }
+
+  setLoading(false);
+};
 
   return (
     <div style={layout.contentWrapper}>
