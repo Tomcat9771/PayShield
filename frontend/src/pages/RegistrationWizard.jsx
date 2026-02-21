@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { layout, components, typography, colors } from "../theme";
 import GoldButton from "../components/GoldButton";
+import { layout, components, typography, colors } from "../theme";
 
 export default function RegistrationWizard() {
   const navigate = useNavigate();
@@ -10,6 +10,9 @@ export default function RegistrationWizard() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [businessId, setBusinessId] = useState(null);
+  const [registrationId, setRegistrationId] = useState(null);
 
   const [form, setForm] = useState({
     business_type: "",
@@ -38,17 +41,47 @@ export default function RegistrationWizard() {
     ]
   };
 
+  /* =========================
+     LOAD EXISTING BUSINESS IF REJECTED
+  ========================= */
   useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setForm(prev => ({
-          ...prev,
-          email: data.user.email
-        }));
+    const loadExisting = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (!user) return;
+
+      const { data: business } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!business) return;
+
+      const { data: registration } = await supabase
+        .from("business_registrations")
+        .select("*")
+        .eq("business_id", business.id)
+        .maybeSingle();
+
+      if (registration?.status === "rejected") {
+        setIsEditMode(true);
+        setBusinessId(business.id);
+        setRegistrationId(registration.id);
+
+        setForm({
+          business_type: business.business_type || "",
+          business_name: business.business_name || "",
+          owner_name: business.owner_name || "",
+          phone: business.phone || "",
+          email: business.email || "",
+          address: business.address || "",
+          registration_number: business.registration_number || "",
+        });
       }
     };
-    loadUser();
+
+    loadExisting();
   }, []);
 
   const handleChange = (field, value) => {
@@ -59,29 +92,14 @@ export default function RegistrationWizard() {
     setDocuments(prev => ({ ...prev, [type]: file }));
   };
 
-  const validateStep2 = () => {
-    if (
-      !form.business_name ||
-      !form.owner_name ||
-      !form.phone ||
-      !form.email ||
-      !form.address
-    ) return false;
-
-    if (form.business_type === "Company" && !form.registration_number)
-      return false;
-
-    return true;
-  };
-
   const validateDocuments = () => {
     const required = requiredDocs[form.business_type] || [];
-    return required.every(doc => documents[doc]);
+    return required.every(doc => documents[doc] || isEditMode);
   };
 
   const handleSubmit = async () => {
     if (!validateDocuments()) {
-      setError("Please upload all required documents.");
+      setError("Please upload required documents.");
       return;
     }
 
@@ -91,66 +109,80 @@ export default function RegistrationWizard() {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-      if (!user) throw new Error("User not authenticated");
 
-      const { data: existing } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      if (isEditMode) {
+        /* =========================
+           UPDATE BUSINESS
+        ========================= */
+        await supabase
+          .from("businesses")
+          .update(form)
+          .eq("id", businessId);
 
-      if (existing) {
-        navigate("/pay-registration");
-        return;
+        /* =========================
+           RESET REGISTRATION STATUS
+        ========================= */
+        await supabase
+          .from("business_registrations")
+          .update({
+            status: "pending",
+            rejection_reason: null
+          })
+          .eq("id", registrationId);
+
+      } else {
+        /* =========================
+           CREATE NEW BUSINESS
+        ========================= */
+        const { data: newBusiness } = await supabase
+          .from("businesses")
+          .insert({
+            ...form,
+            user_id: user.id,
+            registration_fee_paid: false
+          })
+          .select()
+          .single();
+
+        const { data: newReg } = await supabase
+          .from("business_registrations")
+          .insert({
+            business_id: newBusiness.id,
+            status: "pending"
+          })
+          .select()
+          .single();
+
+        setBusinessId(newBusiness.id);
+        setRegistrationId(newReg.id);
       }
 
-      const { data: business, error: businessError } = await supabase
-        .from("businesses")
-        .insert({
-          ...form,
-          user_id: user.id,
-          registration_fee_paid: false
-        })
-        .select()
-        .single();
-
-      if (businessError) throw businessError;
-
-      const { data: registration, error: regError } = await supabase
-        .from("business_registrations")
-        .insert({
-          business_id: business.id,
-          state: "submitted",
-          status: "pending"
-        })
-        .select()
-        .single();
-
-      if (regError) throw regError;
-
+      /* =========================
+         UPLOAD NEW DOCUMENTS
+      ========================= */
       for (const [docType, file] of Object.entries(documents)) {
-        const filePath = `${business.id}/${docType}-${Date.now()}`;
+        if (!file) continue;
 
-        const { error: uploadError } = await supabase.storage
+        const filePath = `${businessId}/${docType}-${Date.now()}`;
+
+        await supabase.storage
           .from("business-documents")
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
-
         await supabase.from("business_documents").insert({
-          business_id: business.id,
-          registration_id: registration.id,
+          business_id: businessId,
+          registration_id: registrationId,
           document_type: docType,
           file_url: filePath,
           verified: false
         });
       }
 
-      navigate("/pay-registration");
+      navigate("/awaiting-approval");
 
     } catch (err) {
       console.error(err);
-      setError("Registration failed. Please try again.");
+      setError("Something went wrong.");
     }
 
     setLoading(false);
@@ -158,49 +190,26 @@ export default function RegistrationWizard() {
 
   return (
     <div style={layout.contentWrapper}>
-      <h2 style={typography.heading}>Business Registration</h2>
+      <h2 style={typography.heading}>
+        {isEditMode ? "Edit & Resubmit Registration" : "Business Registration"}
+      </h2>
 
-      <div
-        style={{
-          width: "80px",
-          height: "3px",
-          background: "linear-gradient(to right, #F1C50E, transparent)",
-          marginBottom: "30px",
-        }}
-      />
+      {error && <p style={{ color: colors.danger }}>{error}</p>}
 
-      {error && (
-        <p style={{ color: colors.danger, marginBottom: 20 }}>{error}</p>
-      )}
+      <div style={{ ...components.card, marginTop: 20 }}>
+        <select
+          value={form.business_type}
+          onChange={(e) => handleChange("business_type", e.target.value)}
+          style={components.input}
+        >
+          <option value="">Select Type</option>
+          <option value="Sole Proprietor">Sole Proprietor</option>
+          <option value="Company">Company</option>
+        </select>
 
-      {step === 1 && (
-        <>
-          <h3 style={typography.subHeading}>Step A – Business Type</h3>
-
-          <select
-            value={form.business_type}
-            onChange={(e) => handleChange("business_type", e.target.value)}
-            style={components.input}
-          >
-            <option value="">Select Type</option>
-            <option value="Sole Proprietor">Sole Proprietor</option>
-            <option value="Company">Company</option>
-          </select>
-
-          <GoldButton
-            disabled={!form.business_type}
-            onClick={() => setStep(2)}
-          >
-            Next
-          </GoldButton>
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <h3 style={typography.subHeading}>Step B – Business Information</h3>
-
-          {["business_name", "owner_name", "phone", "address"].map(field => (
+        {Object.keys(form)
+          .filter(f => f !== "business_type")
+          .map(field => (
             <input
               key={field}
               placeholder={field.replace("_", " ")}
@@ -210,63 +219,20 @@ export default function RegistrationWizard() {
             />
           ))}
 
-          {form.business_type === "Company" && (
+        {requiredDocs[form.business_type]?.map(doc => (
+          <div key={doc} style={{ marginBottom: 10 }}>
+            <label>{doc}</label>
             <input
-              placeholder="Registration Number"
-              value={form.registration_number}
-              onChange={(e) =>
-                handleChange("registration_number", e.target.value)
-              }
-              style={components.input}
+              type="file"
+              onChange={(e) => handleFileChange(doc, e.target.files[0])}
             />
-          )}
-
-          <div style={{ marginTop: 20, display: "flex", gap: "15px" }}>
-            <GoldButton onClick={() => setStep(1)}>Back</GoldButton>
-
-            <GoldButton
-              disabled={!validateStep2()}
-              onClick={() => setStep(3)}
-            >
-              Next
-            </GoldButton>
           </div>
-        </>
-      )}
+        ))}
 
-      {step === 3 && (
-        <>
-          <h3 style={typography.subHeading}>
-            Step C – Upload Required Documents
-          </h3>
-
-          {requiredDocs[form.business_type]?.map(doc => (
-            <div key={doc} style={{ marginBottom: 15 }}>
-              <label style={{ color: colors.white }}>{doc}</label>
-              <input
-                type="file"
-                onChange={(e) =>
-                  handleFileChange(doc, e.target.files[0])
-                }
-              />
-            </div>
-          ))}
-
-          <div style={{ marginTop: 20, display: "flex", gap: "15px" }}>
-            <GoldButton onClick={() => setStep(2)}>
-              Back
-            </GoldButton>
-
-            <GoldButton
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? "Submitting..." : "Submit Registration"}
-            </GoldButton>
-          </div>
-        </>
-      )}
+        <GoldButton onClick={handleSubmit} disabled={loading}>
+          {loading ? "Submitting..." : "Submit"}
+        </GoldButton>
+      </div>
     </div>
   );
 }
-
