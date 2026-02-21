@@ -13,6 +13,7 @@ import PaymentFailure from "./pages/PaymentFailure";
 import AdminDocumentReview from "./pages/AdminDocumentReview";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 
 function App() {
   return (
@@ -22,59 +23,47 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Create Business */}
+      {/* Protected Area Wrapped With Layout */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute mode="approved">
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/create-business"
         element={
           <ProtectedRoute mode="no-business">
-            <RegistrationWizard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Admin Routes */}
-      <Route
-        path="/admin/registrations"
-        element={
-          <ProtectedRoute mode="admin">
-            <AdminRegistrations />
+            <Layout>
+              <RegistrationWizard />
+            </Layout>
           </ProtectedRoute>
         }
       />
 
       <Route
-        path="/admin/audit-log"
+        path="/awaiting-approval"
         element={
-          <ProtectedRoute mode="admin">
-            <AdminAuditLog />
+          <ProtectedRoute mode="pending">
+            <Layout>
+              <PendingApproval />
+            </Layout>
           </ProtectedRoute>
         }
       />
 
-      <Route
-        path="/admin/documents"
-        element={
-          <ProtectedRoute mode="admin">
-            <AdminDocumentReview />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute mode="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Payments */}
       <Route
         path="/pay-registration"
         element={
           <ProtectedRoute mode="auth">
-            <PayRegistration />
+            <Layout>
+              <PayRegistration />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -83,7 +72,9 @@ function App() {
         path="/payment-success"
         element={
           <ProtectedRoute mode="auth">
-            <PaymentSuccess />
+            <Layout>
+              <PaymentSuccess />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -92,36 +83,63 @@ function App() {
         path="/payment-failure"
         element={
           <ProtectedRoute mode="auth">
-            <PaymentFailure />
+            <Layout>
+              <PaymentFailure />
+            </Layout>
           </ProtectedRoute>
         }
       />
 
-      {/* Pending Approval */}
+      {/* Admin Routes */}
       <Route
-        path="/awaiting-approval"
+        path="/admin/dashboard"
         element={
-          <ProtectedRoute mode="pending">
-            <PendingApproval />
+          <ProtectedRoute mode="admin">
+            <Layout>
+              <AdminDashboard />
+            </Layout>
           </ProtectedRoute>
         }
       />
 
-      {/* Dashboard */}
       <Route
-        path="/dashboard"
+        path="/admin/registrations"
         element={
-          <ProtectedRoute mode="approved">
-            <Dashboard />
+          <ProtectedRoute mode="admin">
+            <Layout>
+              <AdminRegistrations />
+            </Layout>
           </ProtectedRoute>
         }
       />
 
-      {/* Catch All */}
+      <Route
+        path="/admin/audit-log"
+        element={
+          <ProtectedRoute mode="admin">
+            <Layout>
+              <AdminAuditLog />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/documents"
+        element={
+          <ProtectedRoute mode="admin">
+            <Layout>
+              <AdminDocumentReview />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
 
 export default App;
+
 
