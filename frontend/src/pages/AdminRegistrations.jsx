@@ -24,7 +24,13 @@ export default function AdminRegistrations() {
           id,
           business_name,
           business_type,
-          registration_fee_paid
+          registration_fee_paid,
+          business_history (
+            id,
+            old_data,
+            new_data,
+            changed_at
+          )
         ),
         business_documents (
           id,
@@ -147,10 +153,35 @@ export default function AdminRegistrations() {
         const canApprove =
           reg.status === "pending" && allDocsVerified;
 
-        // 🔥 SORT HISTORY NEWEST FIRST
+        /* =========================
+           REGISTRATION HISTORY
+        ========================= */
         const history = (reg.registration_history || []).sort(
           (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
         );
+
+        /* =========================
+           BUSINESS CHANGE HISTORY
+        ========================= */
+        const businessHistory = (business?.business_history || []).sort(
+          (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+        );
+
+        const getChanges = (oldData, newData) => {
+          const changes = [];
+
+          Object.keys(newData || {}).forEach((key) => {
+            if (oldData?.[key] !== newData?.[key]) {
+              changes.push({
+                field: key,
+                from: oldData?.[key],
+                to: newData?.[key],
+              });
+            }
+          });
+
+          return changes;
+        };
 
         return (
           <div
@@ -227,6 +258,67 @@ export default function AdminRegistrations() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* =========================
+                BUSINESS CHANGE HISTORY
+            ========================== */}
+            {businessHistory.length > 0 && (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: 15,
+                  background: "#eef3ff",
+                  borderRadius: 8,
+                }}
+              >
+                <strong>Business Changes</strong>
+
+                {businessHistory.map((entry) => {
+                  const changes = getChanges(
+                    entry.old_data,
+                    entry.new_data
+                  );
+
+                  if (changes.length === 0) return null;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        background: "#ffffff",
+                        borderRadius: 6,
+                        border: "1px solid #ddd",
+                      }}
+                    >
+                      {changes.map((change, index) => (
+                        <div key={index} style={{ marginBottom: 5 }}>
+                          <strong>{change.field}</strong>:{" "}
+                          <span style={{ color: "#c0392b" }}>
+                            {String(change.from || "")}
+                          </span>{" "}
+                          →{" "}
+                          <span style={{ color: "#27ae60" }}>
+                            {String(change.to || "")}
+                          </span>
+                        </div>
+                      ))}
+
+                      <div
+                        style={{
+                          fontSize: 12,
+                          marginTop: 5,
+                          opacity: 0.6,
+                        }}
+                      >
+                        {new Date(entry.changed_at).toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
