@@ -10,9 +10,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* =========================
-     Auto Redirect if Already Logged In
-  ========================= */
+  // Only auto-redirect if coming fresh and already logged in
   useEffect(() => {
     const checkSession = async () => {
       const {
@@ -25,27 +23,15 @@ export default function Login() {
     };
 
     checkSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          navigate("/dashboard", { replace: true });
-        }
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
   }, [navigate]);
 
-  /* =========================
-     Login Handler
-  ========================= */
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // 🔥 Force logout first (so you can switch accounts cleanly)
+    await supabase.auth.signOut();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -58,8 +44,7 @@ export default function Login() {
       return;
     }
 
-    // No manual navigation here.
-    // Auth listener handles redirect.
+    navigate("/dashboard", { replace: true });
   };
 
   return (
@@ -96,4 +81,4 @@ export default function Login() {
       </p>
     </div>
   );
-}
+}}
