@@ -23,11 +23,7 @@ export default function Layout({ children }) {
         .eq("id", session.user.id)
         .maybeSingle();
 
-      if (profile?.role === "admin") {
-        setRole("ADMIN");
-      } else {
-        setRole("USER");
-      }
+      setRole(profile?.role === "admin" ? "ADMIN" : "USER");
     };
 
     loadUser();
@@ -39,29 +35,38 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#6B1A7B",
+        color: "#F1C50E",
+      }}
+    >
       {/* HEADER */}
       <div
         style={{
-          background: "#111827",
-          color: "white",
-          padding: "12px 24px",
+          padding: "16px 32px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          borderBottom: "2px solid #F1C50E",
         }}
       >
-        <div style={{ fontWeight: "bold" }}>PayShield</div>
+        <div style={{ fontWeight: "bold", fontSize: "20px" }}>
+          PayShield
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span>{email}</span>
+          <span style={{ color: "white" }}>{email}</span>
 
           <span
             style={{
-              padding: "4px 10px",
-              borderRadius: "12px",
+              padding: "6px 14px",
+              borderRadius: "20px",
               fontSize: "12px",
-              background: role === "ADMIN" ? "#dc2626" : "#2563eb",
+              fontWeight: "bold",
+              background: role === "ADMIN" ? "#dc2626" : "#F1C50E",
+              color: role === "ADMIN" ? "white" : "#6B1A7B",
             }}
           >
             {role}
@@ -70,7 +75,12 @@ export default function Layout({ children }) {
           <button
             onClick={handleLogout}
             style={{
-              padding: "6px 12px",
+              backgroundColor: "#FAE418",
+              border: "2px solid #F1C50E",
+              color: "#6B1A7B",
+              padding: "8px 18px",
+              borderRadius: "30px",
+              fontWeight: "bold",
               cursor: "pointer",
             }}
           >
@@ -80,8 +90,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* PAGE CONTENT */}
-      <div>{children}</div>
+      <div style={{ padding: "40px" }}>{children}</div>
     </div>
   );
 }
-

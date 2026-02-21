@@ -4,6 +4,22 @@ import { supabase } from "../supabaseClient";
 
 export default function RegistrationWizard() {
   const navigate = useNavigate();
+const goldButton = {
+  backgroundColor: "#FAE418",
+  border: "2px solid #F1C50E",
+  color: "#6B1A7B",
+  padding: "10px 24px",
+  borderRadius: "30px",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px",
+  marginBottom: "12px",
+  borderRadius: "8px",
+};
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -174,123 +190,119 @@ export default function RegistrationWizard() {
     setLoading(false);
   };
 
-  return (
-    <div style={{ padding: 40, maxWidth: 600 }}>
-      <h2>Business Registration</h2>
+  // Keep all your logic ABOVE exactly as is.
+// Only replace the RETURN section with this styled version.
 
-      {error && (
-        <p style={{ color: "red", marginBottom: 20 }}>{error}</p>
-      )}
+return (
+  <div style={{ padding: 40, maxWidth: 600 }}>
+    <h2 style={{ color: "#F1C50E" }}>Business Registration</h2>
 
-      {/* =========================
-         STEP 1 – BUSINESS TYPE
-      ========================= */}
-      {step === 1 && (
-        <>
-          <h3>Step A – Business Type</h3>
+    {error && (
+      <p style={{ color: "red", marginBottom: 20 }}>{error}</p>
+    )}
 
-          <select
-            value={form.business_type}
-            onChange={(e) => handleChange("business_type", e.target.value)}
-          >
-            <option value="">Select Type</option>
-            <option value="Sole Proprietor">Sole Proprietor</option>
-            <option value="Company">Company</option>
-          </select>
+    {step === 1 && (
+      <>
+        <h3 style={{ color: "white" }}>Step A – Business Type</h3>
 
-          <br /><br />
+        <select
+          value={form.business_type}
+          onChange={(e) => handleChange("business_type", e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+          }}
+        >
+          <option value="">Select Type</option>
+          <option value="Sole Proprietor">Sole Proprietor</option>
+          <option value="Company">Company</option>
+        </select>
 
-          <button
-            disabled={!form.business_type}
-            onClick={() => setStep(2)}
-          >
-            Next
+        <button
+          disabled={!form.business_type}
+          onClick={() => setStep(2)}
+          style={goldButton}
+        >
+          Next
+        </button>
+      </>
+    )}
+
+    {step === 2 && (
+      <>
+        <h3 style={{ color: "white" }}>Step B – Business Information</h3>
+
+        {[
+          "business_name",
+          "owner_name",
+          "phone",
+          "address",
+        ].map((field) => (
+          <input
+            key={field}
+            placeholder={field.replace("_", " ")}
+            value={form[field]}
+            onChange={(e) => handleChange(field, e.target.value)}
+            style={inputStyle}
+          />
+        ))}
+
+        {form.business_type === "Company" && (
+          <input
+            placeholder="Registration Number"
+            value={form.registration_number}
+            onChange={(e) =>
+              handleChange("registration_number", e.target.value)
+            }
+            style={inputStyle}
+          />
+        )}
+
+        <div style={{ marginTop: 20 }}>
+          <button onClick={() => setStep(1)} style={goldButton}>
+            Back
           </button>
-        </>
-      )}
-
-      {/* =========================
-         STEP 2 – BUSINESS INFO
-      ========================= */}
-      {step === 2 && (
-        <>
-          <h3>Step B – Business Information</h3>
-
-          <input
-            placeholder="Business Name"
-            value={form.business_name}
-            onChange={e => handleChange("business_name", e.target.value)}
-          />
-
-          <input
-            placeholder="Owner Name"
-            value={form.owner_name}
-            onChange={e => handleChange("owner_name", e.target.value)}
-          />
-
-          <input
-            placeholder="Phone"
-            value={form.phone}
-            onChange={e => handleChange("phone", e.target.value)}
-          />
-
-          <input
-            placeholder="Email"
-            value={form.email}
-            disabled
-          />
-
-          <input
-            placeholder="Address"
-            value={form.address}
-            onChange={e => handleChange("address", e.target.value)}
-          />
-
-          {form.business_type === "Company" && (
-            <input
-              placeholder="Registration Number"
-              value={form.registration_number}
-              onChange={e => handleChange("registration_number", e.target.value)}
-            />
-          )}
-
-          <br /><br />
-
-          <button onClick={() => setStep(1)}>Back</button>
           <button
             disabled={!validateStep2()}
             onClick={() => setStep(3)}
+            style={{ ...goldButton, marginLeft: 10 }}
           >
             Next
           </button>
-        </>
-      )}
+        </div>
+      </>
+    )}
 
-      {/* =========================
-         STEP 3 – DOCUMENT UPLOAD
-      ========================= */}
-      {step === 3 && (
-        <>
-          <h3>Step C – Upload Required Documents</h3>
+    {step === 3 && (
+      <>
+        <h3 style={{ color: "white" }}>
+          Step C – Upload Required Documents
+        </h3>
 
-          {requiredDocs[form.business_type]?.map(doc => (
-            <div key={doc} style={{ marginBottom: 10 }}>
-              <label>{doc}</label>
-              <input
-                type="file"
-                onChange={e => handleFileChange(doc, e.target.files[0])}
-              />
-            </div>
-          ))}
+        {requiredDocs[form.business_type]?.map((doc) => (
+          <div key={doc} style={{ marginBottom: 15 }}>
+            <label style={{ color: "white" }}>{doc}</label>
+            <input type="file" />
+          </div>
+        ))}
 
-          <br />
-
-          <button onClick={() => setStep(2)}>Back</button>
-          <button onClick={handleSubmit} disabled={loading}>
+        <div style={{ marginTop: 20 }}>
+          <button onClick={() => setStep(2)} style={goldButton}>
+            Back
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{ ...goldButton, marginLeft: 10 }}
+          >
             {loading ? "Submitting..." : "Submit Registration"}
           </button>
-        </>
-      )}
-    </div>
-  );
-}
+        </div>
+      </>
+    )}
+  </div>
+);
+
+

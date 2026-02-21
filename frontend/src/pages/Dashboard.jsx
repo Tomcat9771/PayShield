@@ -17,7 +17,6 @@ export default function Dashboard() {
           return;
         }
 
-        // 1️⃣ Get user's business
         const { data: business } = await supabase
           .from("businesses")
           .select("id")
@@ -29,7 +28,6 @@ export default function Dashboard() {
           return;
         }
 
-        // 2️⃣ Get registration status
         const { data: registration } = await supabase
           .from("business_registrations")
           .select("status")
@@ -46,21 +44,13 @@ export default function Dashboard() {
           return;
         }
 
-        if (registration.status === "rejected") {
-          navigate("/registration-rejected");
-          return;
-        }
-
         if (registration.status !== "approved") {
           navigate("/awaiting-approval");
           return;
         }
 
-        // ✅ Approved → allow access
         setLoading(false);
-
       } catch (err) {
-        console.error(err);
         navigate("/login");
       }
     };
@@ -69,13 +59,15 @@ export default function Dashboard() {
   }, [navigate]);
 
   if (loading) {
-    return <div>Checking access...</div>;
+    return <div style={{ padding: 40 }}>Checking access...</div>;
   }
 
   return (
-    <div>
-      {/* Your normal dashboard content here */}
-      <h1>Dashboard</h1>
+    <div style={{ padding: 40 }}>
+      <h1 style={{ color: "#F1C50E" }}>Dashboard</h1>
+      <p style={{ color: "white" }}>
+        Welcome to your PayShield control panel.
+      </p>
     </div>
   );
 }

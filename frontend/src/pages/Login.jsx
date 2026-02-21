@@ -11,18 +11,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-  const checkSession = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (session) {
-      navigate("/dashboard", { replace: true });
-    }
-  };
+      if (session) {
+        navigate("/dashboard", { replace: true });
+      }
+    };
 
-  checkSession();
-}, [navigate]);
+    checkSession();
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -46,38 +46,94 @@ export default function Login() {
     navigate("/dashboard", { replace: true });
   };
 
+  const goldButton = {
+    backgroundColor: "#FAE418",
+    border: "2px solid #F1C50E",
+    color: "#6B1A7B",
+    padding: "12px 28px",
+    borderRadius: "30px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    width: "100%",
+    marginTop: "15px",
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "12px",
+    marginBottom: "15px",
+    borderRadius: "8px",
+    border: "none",
+    outline: "none",
+    fontSize: "14px",
+  };
+
   return (
-    <div className="auth-container">
-      <h2>Login to PayShield</h2>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#6B1A7B",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "380px",
+          padding: "40px",
+          backgroundColor: "rgba(255,255,255,0.08)",
+          borderRadius: "16px",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+          textAlign: "center",
+        }}
+      >
+        <h2 style={{ color: "#F1C50E", marginBottom: "25px" }}>
+          Login to PayShield
+        </h2>
 
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={inputStyle}
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={inputStyle}
+          />
 
-        <button disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          <button disabled={loading} style={goldButton}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+        {error && (
+          <p style={{ color: "red", marginTop: "15px" }}>{error}</p>
+        )}
 
-      <p>
-        Don’t have an account?{" "}
-        <a href="/register">Register here</a>
-      </p>
+        <p style={{ marginTop: "20px", color: "white" }}>
+          Don’t have an account?{" "}
+          <span
+            onClick={() => navigate("/register")}
+            style={{
+              color: "#F1C50E",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            Register here
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
