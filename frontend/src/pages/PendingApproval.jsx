@@ -1,26 +1,43 @@
-import { useNavigate } from "react-router-dom";
+import { layout, components, typography, colors } from "../theme";
 
 export default function PendingApproval() {
-  const navigate = useNavigate();
-
   return (
-    <div style={{ padding: "40px", textAlign: "center" }}>
-      <h2>⏳ Registration Pending Approval</h2>
-
-      <p>
-        Your registration has been submitted and is currently under review.
-      </p>
-
-      <p>
-        You will be notified once your business has been approved.
-      </p>
-
-      <button
-        style={{ marginTop: "20px" }}
-        onClick={() => navigate("/dashboard")}
+    <div
+      style={{
+        ...layout.page,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          ...components.card,
+          maxWidth: "600px",
+          textAlign: "center",
+        }}
       >
-        Back to Dashboard
-      </button>
+        <h2 style={typography.heading}>
+          ⏳ Registration Pending Approval
+        </h2>
+
+        <p style={typography.text}>
+          Your registration has been submitted and is currently under review.
+        </p>
+
+        <p style={typography.text}>
+          You will be notified once your business has been approved.
+        </p>
+
+        <div
+          style={{
+            width: "80px",
+            height: "3px",
+            background: `linear-gradient(to right, ${colors.gold}, transparent)`,
+            margin: "25px auto 0 auto",
+          }}
+        />
+      </div>
     </div>
   );
 }
