@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
@@ -16,16 +16,16 @@ import AdminDocumentReview from "./pages/AdminDocumentReview";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+const navigate = useNavigate();
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+  navigate("/login", { replace: true });
+};
+
+<button onClick={handleLogout}>Logout</button>
+
 function App() {
-  // 🔒 Force logout on every app load
-  useEffect(() => {
-    const forceLogout = async () => {
-      await supabase.auth.signOut();
-    };
-
-    forceLogout();
-  }, []);
-
+  
   return (
     <Routes>
       {/* Public */}

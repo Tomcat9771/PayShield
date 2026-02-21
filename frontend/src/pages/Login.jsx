@@ -11,18 +11,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  const checkSession = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-      if (session) {
-        navigate("/dashboard", { replace: true });
-      }
-    };
+    if (session) {
+      navigate("/dashboard", { replace: true });
+    }
+  };
 
-    checkSession();
-  }, [navigate]);
+  checkSession();
+}, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
