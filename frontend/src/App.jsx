@@ -18,14 +18,7 @@ function App() {
   return (
     <Routes>
       {/* Public */}
-      <Route
-  path="/"
-  element={
-    <ProtectedRoute mode="approved">
-      <Dashboard />
-    </ProtectedRoute>
-  }
-/>
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
