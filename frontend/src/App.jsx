@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "./supabaseClient";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,6 +17,15 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  // 🔒 Force logout on every app load
+  useEffect(() => {
+    const forceLogout = async () => {
+      await supabase.auth.signOut();
+    };
+
+    forceLogout();
+  }, []);
+
   return (
     <Routes>
       {/* Public */}
@@ -31,65 +42,73 @@ function App() {
           </ProtectedRoute>
         }
       />
-<Route
-  path="/admin/registrations"
-  element={
-    <ProtectedRoute mode="admin">
-      <AdminRegistrations />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/admin/audit-log"
-  element={
-    <ProtectedRoute mode="admin">
-      <AdminAuditLog />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/pay-registration"
-  element={
-    <ProtectedRoute mode="auth">
-      <PayRegistration />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/payment-success"
-  element={
-    <ProtectedRoute mode="auth">
-      <PaymentSuccess />
-    </ProtectedRoute>
-  }
-/>
 
-<Route
-  path="/payment-failure"
-  element={
-    <ProtectedRoute mode="auth">
-      <PaymentFailure />
-    </ProtectedRoute>
-  }
-/>
+      {/* Admin Routes */}
+      <Route
+        path="/admin/registrations"
+        element={
+          <ProtectedRoute mode="admin">
+            <AdminRegistrations />
+          </ProtectedRoute>
+        }
+      />
 
-<Route
-  path="/admin/documents"
-  element={
-    <ProtectedRoute mode="admin">
-      <AdminDocumentReview />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/admin/dashboard"
-  element={
-    <ProtectedRoute mode="admin">
-      <AdminDashboard />
-    </ProtectedRoute>
-  }
-/>
-      {/* Pending Approval (must be pending) */}
+      <Route
+        path="/admin/audit-log"
+        element={
+          <ProtectedRoute mode="admin">
+            <AdminAuditLog />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/documents"
+        element={
+          <ProtectedRoute mode="admin">
+            <AdminDocumentReview />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute mode="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Payments */}
+      <Route
+        path="/pay-registration"
+        element={
+          <ProtectedRoute mode="auth">
+            <PayRegistration />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payment-success"
+        element={
+          <ProtectedRoute mode="auth">
+            <PaymentSuccess />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payment-failure"
+        element={
+          <ProtectedRoute mode="auth">
+            <PaymentFailure />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Pending Approval */}
       <Route
         path="/awaiting-approval"
         element={
@@ -109,6 +128,7 @@ function App() {
         }
       />
 
+      {/* Catch All */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
