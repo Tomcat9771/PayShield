@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { layout, components, typography, colors } from "../theme";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -29,7 +30,6 @@ export default function Login() {
     setLoading(true);
     setError("");
 
-    // Ensure clean account switching
     await supabase.auth.signOut();
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -46,33 +46,10 @@ export default function Login() {
     navigate("/dashboard", { replace: true });
   };
 
-  const goldButton = {
-    backgroundColor: "#FAE418",
-    border: "2px solid #F1C50E",
-    color: "#6B1A7B",
-    padding: "12px 28px",
-    borderRadius: "30px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "15px",
-  };
-
-  const inputStyle = {
-    width: "100%",
-    padding: "12px",
-    marginBottom: "15px",
-    borderRadius: "8px",
-    border: "none",
-    outline: "none",
-    fontSize: "14px",
-  };
-
   return (
     <div
       style={{
-        minHeight: "100vh",
-        backgroundColor: "#6B1A7B",
+        ...layout.page,
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -80,17 +57,22 @@ export default function Login() {
     >
       <div
         style={{
+          ...components.card,
           width: "380px",
-          padding: "40px",
-          backgroundColor: "rgba(255,255,255,0.08)",
-          borderRadius: "16px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
           textAlign: "center",
         }}
       >
-        <h2 style={{ color: "#F1C50E", marginBottom: "25px" }}>
-          Login to PayShield
-        </h2>
+        {/* Logo */}
+        <img
+          src="/shieldspay-logo.png"
+          alt="PayShield Logo"
+          style={{
+            height: "60px",
+            marginBottom: "20px",
+          }}
+        />
+
+        <h2 style={typography.heading}>Login to PayShield</h2>
 
         <form onSubmit={handleLogin}>
           <input
@@ -99,7 +81,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={inputStyle}
+            style={components.input}
           />
 
           <input
@@ -108,24 +90,33 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={inputStyle}
+            style={components.input}
           />
 
-          <button disabled={loading} style={goldButton}>
+          <button
+            disabled={loading}
+            style={{
+              ...components.goldButton,
+              width: "100%",
+              marginTop: "10px",
+            }}
+          >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         {error && (
-          <p style={{ color: "red", marginTop: "15px" }}>{error}</p>
+          <p style={{ color: colors.danger, marginTop: "15px" }}>
+            {error}
+          </p>
         )}
 
-        <p style={{ marginTop: "20px", color: "white" }}>
+        <p style={{ marginTop: "20px", color: colors.white }}>
           Don’t have an account?{" "}
           <span
             onClick={() => navigate("/register")}
             style={{
-              color: "#F1C50E",
+              color: colors.gold,
               cursor: "pointer",
               fontWeight: "bold",
             }}

@@ -52,10 +52,16 @@ export default function Layout({ children }) {
           borderBottom: "2px solid #F1C50E",
         }}
       >
-        <div style={{ fontWeight: "bold", fontSize: "20px" }}>
-          PayShield
-        </div>
-
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+  <img
+    src="/shieldspay-logo.png"
+    alt="PayShield Logo"
+    style={{ height: "50px" }}
+  />
+  <span style={{ fontWeight: "bold", fontSize: "20px" }}>
+    PayShield
+  </span>
+</div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <span style={{ color: "white" }}>{email}</span>
 
