@@ -63,7 +63,6 @@ export default function Login() {
           textAlign: "center",
         }}
       >
-        {/* Logo */}
         <img
           src="/shieldpay-logo.png"
           alt="PayShield Logo"
@@ -94,11 +93,9 @@ export default function Login() {
             style={components.input}
           />
 
- <GoldButton type="submit" fullWidth disabled={loading}>
-  {loading ? "Logging in..." : "Login"}
-</GoldButton>
+          <GoldButton type="submit" fullWidth disabled={loading}>
             {loading ? "Logging in..." : "Login"}
-          </button>
+          </GoldButton>
         </form>
 
         {error && (
