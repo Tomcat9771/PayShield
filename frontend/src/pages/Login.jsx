@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +10,38 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  /* =========================
+     Auto Redirect if Logged In
+  ========================= */
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    checkSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session) {
+          navigate("/", { replace: true });
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  /* =========================
+     Login Handler
+  ========================= */
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -26,7 +58,8 @@ export default function Login() {
       return;
     }
 
-    navigate("/", { replace: true });
+    // No manual navigate here.
+    // Auth listener above will handle redirect cleanly.
   };
 
   return (
