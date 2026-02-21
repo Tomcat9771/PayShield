@@ -66,7 +66,7 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (mode === "no-business") {
+if (mode === "no-business") {
 
   if (!business) {
     setStatus("done");
@@ -79,8 +79,27 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
     .eq("business_id", business.id)
     .maybeSingle();
 
-  if (registration?.status === "rejected") {
+  // If something is inconsistent, send back to create flow
+  if (!registration) {
+    setRedirect("/create-business");
+    setStatus("redirect");
+    return;
+  }
+
+  if (registration.status === "rejected") {
     setStatus("done"); // allow editing
+    return;
+  }
+
+  if (registration.status === "pending") {
+    setRedirect("/awaiting-approval");
+    setStatus("redirect");
+    return;
+  }
+
+  if (registration.status === "approved") {
+    setRedirect("/dashboard");
+    setStatus("redirect");
     return;
   }
 
@@ -88,7 +107,6 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
   setStatus("redirect");
   return;
 }
-
         if (!business) {
           setRedirect("/create-business");
           setStatus("redirect");
