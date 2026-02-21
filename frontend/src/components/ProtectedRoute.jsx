@@ -67,14 +67,27 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
           .maybeSingle();
 
         if (mode === "no-business") {
-          if (!business) {
-            setStatus("done");
-          } else {
-            setRedirect("/dashboard");
-            setStatus("redirect");
-          }
-          return;
-        }
+
+  if (!business) {
+    setStatus("done");
+    return;
+  }
+
+  const { data: registration } = await supabase
+    .from("business_registrations")
+    .select("status")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  if (registration?.status === "rejected") {
+    setStatus("done"); // allow editing
+    return;
+  }
+
+  setRedirect("/dashboard");
+  setStatus("redirect");
+  return;
+}
 
         if (!business) {
           setRedirect("/create-business");
