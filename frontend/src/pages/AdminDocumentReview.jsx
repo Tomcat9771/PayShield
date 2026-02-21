@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
+import GoldButton from "../components/GoldButton";
+
 
 export default function AdminDocumentReview() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+const navigate = useNavigate();
+<GoldButton
+  onClick={() => navigate("/admin/dashboard")}
+  style={{ marginBottom: "20px" }}
+>
+  ← Back to Dashboard
+</GoldButton>
 
   useEffect(() => {
     fetchData();
