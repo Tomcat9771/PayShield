@@ -1,6 +1,4 @@
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { supabase } from "./supabaseClient";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -16,16 +14,7 @@ import AdminDocumentReview from "./pages/AdminDocumentReview";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const navigate = useNavigate();
-const handleLogout = async () => {
-  await supabase.auth.signOut();
-  navigate("/login", { replace: true });
-};
-
-<button onClick={handleLogout}>Logout</button>
-
 function App() {
-  
   return (
     <Routes>
       {/* Public */}
@@ -33,7 +22,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Create Business (must be logged in and have NO business) */}
+      {/* Create Business */}
       <Route
         path="/create-business"
         element={
@@ -118,7 +107,7 @@ function App() {
         }
       />
 
-      {/* Dashboard (must be approved) */}
+      {/* Dashboard */}
       <Route
         path="/dashboard"
         element={
@@ -135,3 +124,4 @@ function App() {
 }
 
 export default App;
+
