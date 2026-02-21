@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { layout, components, typography, colors } from "../theme";
+import GoldButton from "../components/GoldButton";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -93,14 +94,9 @@ export default function Login() {
             style={components.input}
           />
 
-          <button
-            disabled={loading}
-            style={{
-              ...components.goldButton,
-              width: "100%",
-              marginTop: "10px",
-            }}
-          >
+ <GoldButton type="submit" fullWidth disabled={loading}>
+  {loading ? "Logging in..." : "Login"}
+</GoldButton>
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>

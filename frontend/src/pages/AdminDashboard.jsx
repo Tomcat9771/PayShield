@@ -1,38 +1,37 @@
+import { useNavigate } from "react-router-dom";
+import { layout, typography } from "../theme";
+import GoldButton from "../components/GoldButton";
+
 export default function AdminDashboard() {
-  const linkStyle = {
-    display: "inline-block",
-    marginTop: "15px",
-    padding: "10px 24px",
-    backgroundColor: "#FAE418",
-    border: "2px solid #F1C50E",
-    color: "#6B1A7B",
-    borderRadius: "30px",
-    fontWeight: "bold",
-    textDecoration: "none",
-    cursor: "pointer",
-  };
+  const navigate = useNavigate();
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1 style={{ color: "#F1C50E" }}>Admin Dashboard</h1>
-      <p style={{ color: "white" }}>Welcome, Admin.</p>
+    <div style={layout.contentWrapper}>
+      <h1 style={typography.heading}>Admin Dashboard</h1>
 
-      <div style={{ marginTop: 30 }}>
-        <a href="/admin/registrations" style={linkStyle}>
+      <div
+        style={{
+          width: "80px",
+          height: "3px",
+          background: "linear-gradient(to right, #F1C50E, transparent)",
+          marginBottom: "30px",
+        }}
+      />
+
+      <p style={typography.text}>Welcome, Admin.</p>
+
+      <div style={{ marginTop: 30, display: "flex", gap: "20px", flexWrap: "wrap" }}>
+        <GoldButton onClick={() => navigate("/admin/registrations")}>
           View Registrations
-        </a>
-      </div>
+        </GoldButton>
 
-      <div>
-        <a href="/admin/documents" style={linkStyle}>
+        <GoldButton onClick={() => navigate("/admin/documents")}>
           Review Documents
-        </a>
-      </div>
+        </GoldButton>
 
-      <div>
-        <a href="/admin/audit-log" style={linkStyle}>
+        <GoldButton onClick={() => navigate("/admin/audit-log")}>
           Audit Log
-        </a>
+        </GoldButton>
       </div>
     </div>
   );

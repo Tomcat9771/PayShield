@@ -44,14 +44,15 @@ export default function Layout({ children }) {
     >
       {/* HEADER */}
       <div
-        style={{
-          padding: "16px 32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "2px solid #F1C50E",
-        }}
-      >
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "20px 40px",
+    borderBottom: "1px solid rgba(241,197,14,0.3)",
+    background: "linear-gradient(to right, #6B1A7B, #5A1568)",
+  }}
+>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
   <img
     src="/shieldpay-logo.png"

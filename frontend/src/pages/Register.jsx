@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { layout, components, typography, colors } from "../theme";
+import GoldButton from "../components/GoldButton";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -35,7 +37,7 @@ export default function Register() {
 
       if (error) throw error;
 
-      setSuccess("Registration successful. Please check your email to verify your account.");
+      setSuccess("Registration successful. Please check your email.");
       navigate("/login");
 
     } catch (err) {
@@ -46,33 +48,44 @@ export default function Register() {
   };
 
   return (
-    <div className="auth-container">
-      <h2>Create Account</h2>
+    <div
+      style={{
+        ...layout.page,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ ...components.card, width: "380px", textAlign: "center" }}>
+        <h2 style={typography.heading}>Create Account</h2>
 
-      <form onSubmit={handleRegister}>
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleRegister}>
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            onChange={handleChange}
+            required
+            style={components.input}
+          />
 
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            onChange={handleChange}
+            required
+            style={components.input}
+          />
 
-        <button disabled={loading}>
-          {loading ? "Creating..." : "Register"}
-        </button>
-      </form>
+          <GoldButton type="submit" fullWidth disabled={loading}>
+            {loading ? "Creating..." : "Register"}
+          </GoldButton>
+        </form>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+        {error && <p style={{ color: colors.danger }}>{error}</p>}
+        {success && <p style={{ color: colors.gold }}>{success}</p>}
+      </div>
     </div>
   );
 }

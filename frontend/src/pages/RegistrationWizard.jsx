@@ -1,25 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { layout, components, typography, colors } from "../theme";
+import GoldButton from "../components/GoldButton";
 
 export default function RegistrationWizard() {
   const navigate = useNavigate();
-const goldButton = {
-  backgroundColor: "#FAE418",
-  border: "2px solid #F1C50E",
-  color: "#6B1A7B",
-  padding: "10px 24px",
-  borderRadius: "30px",
-  fontWeight: "bold",
-  cursor: "pointer",
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  marginBottom: "12px",
-  borderRadius: "8px",
-};
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -37,9 +23,6 @@ const inputStyle = {
 
   const [documents, setDocuments] = useState({});
 
-  /* =========================
-     REQUIRED DOCUMENTS
-  ========================= */
   const requiredDocs = {
     Company: [
       "cipc",
@@ -55,9 +38,6 @@ const inputStyle = {
     ]
   };
 
-  /* =========================
-     AUTO FILL AUTH EMAIL
-  ========================= */
   useEffect(() => {
     const loadUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -111,12 +91,8 @@ const inputStyle = {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-
       if (!user) throw new Error("User not authenticated");
 
-      /* =========================
-         PREVENT DUPLICATE BUSINESS
-      ========================= */
       const { data: existing } = await supabase
         .from("businesses")
         .select("id")
@@ -128,9 +104,6 @@ const inputStyle = {
         return;
       }
 
-      /* =========================
-         CREATE BUSINESS
-      ========================= */
       const { data: business, error: businessError } = await supabase
         .from("businesses")
         .insert({
@@ -143,9 +116,6 @@ const inputStyle = {
 
       if (businessError) throw businessError;
 
-      /* =========================
-         CREATE REGISTRATION
-      ========================= */
       const { data: registration, error: regError } = await supabase
         .from("business_registrations")
         .insert({
@@ -158,11 +128,7 @@ const inputStyle = {
 
       if (regError) throw regError;
 
-      /* =========================
-         UPLOAD DOCUMENTS (PRIVATE BUCKET)
-      ========================= */
       for (const [docType, file] of Object.entries(documents)) {
-
         const filePath = `${business.id}/${docType}-${Date.now()}`;
 
         const { error: uploadError } = await supabase.storage
@@ -175,7 +141,7 @@ const inputStyle = {
           business_id: business.id,
           registration_id: registration.id,
           document_type: docType,
-          file_url: filePath, // STORE PATH ONLY (PRIVATE)
+          file_url: filePath,
           verified: false
         });
       }
@@ -190,124 +156,117 @@ const inputStyle = {
     setLoading(false);
   };
 
-  // Keep all your logic ABOVE exactly as is.
-// Only replace the RETURN section with this styled version.
+  return (
+    <div style={layout.contentWrapper}>
+      <h2 style={typography.heading}>Business Registration</h2>
 
-return (
-  <div style={{ padding: 40, maxWidth: 600 }}>
-    <h2 style={{ color: "#F1C50E" }}>Business Registration</h2>
+      <div
+        style={{
+          width: "80px",
+          height: "3px",
+          background: "linear-gradient(to right, #F1C50E, transparent)",
+          marginBottom: "30px",
+        }}
+      />
 
-    {error && (
-      <p style={{ color: "red", marginBottom: 20 }}>{error}</p>
-    )}
+      {error && (
+        <p style={{ color: colors.danger, marginBottom: 20 }}>{error}</p>
+      )}
 
-    {step === 1 && (
-      <>
-        <h3 style={{ color: "white" }}>Step A – Business Type</h3>
+      {step === 1 && (
+        <>
+          <h3 style={typography.subHeading}>Step A – Business Type</h3>
 
-        <select
-          value={form.business_type}
-          onChange={(e) => handleChange("business_type", e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-          }}
-        >
-          <option value="">Select Type</option>
-          <option value="Sole Proprietor">Sole Proprietor</option>
-          <option value="Company">Company</option>
-        </select>
+          <select
+            value={form.business_type}
+            onChange={(e) => handleChange("business_type", e.target.value)}
+            style={components.input}
+          >
+            <option value="">Select Type</option>
+            <option value="Sole Proprietor">Sole Proprietor</option>
+            <option value="Company">Company</option>
+          </select>
 
-        <button
-          disabled={!form.business_type}
-          onClick={() => setStep(2)}
-          style={goldButton}
-        >
-          Next
-        </button>
-      </>
-    )}
-
-    {step === 2 && (
-      <>
-        <h3 style={{ color: "white" }}>Step B – Business Information</h3>
-
-        {[
-          "business_name",
-          "owner_name",
-          "phone",
-          "address",
-        ].map((field) => (
-          <input
-            key={field}
-            placeholder={field.replace("_", " ")}
-            value={form[field]}
-            onChange={(e) => handleChange(field, e.target.value)}
-            style={inputStyle}
-          />
-        ))}
-
-        {form.business_type === "Company" && (
-          <input
-            placeholder="Registration Number"
-            value={form.registration_number}
-            onChange={(e) =>
-              handleChange("registration_number", e.target.value)
-            }
-            style={inputStyle}
-          />
-        )}
-
-        <div style={{ marginTop: 20 }}>
-          <button onClick={() => setStep(1)} style={goldButton}>
-            Back
-          </button>
-          <button
-            disabled={!validateStep2()}
-            onClick={() => setStep(3)}
-            style={{ ...goldButton, marginLeft: 10 }}
+          <GoldButton
+            disabled={!form.business_type}
+            onClick={() => setStep(2)}
           >
             Next
-          </button>
-        </div>
-      </>
-    )}
+          </GoldButton>
+        </>
+      )}
 
-    {step === 3 && (
-      <>
-        <h3 style={{ color: "white" }}>
-          Step C – Upload Required Documents
-        </h3>
+      {step === 2 && (
+        <>
+          <h3 style={typography.subHeading}>Step B – Business Information</h3>
 
-        {requiredDocs[form.business_type]?.map((doc) => (
-          <div key={doc} style={{ marginBottom: 15 }}>
-            <label style={{ color: "white" }}>{doc}</label>
+          {["business_name", "owner_name", "phone", "address"].map(field => (
             <input
-  type="file"
-  onChange={(e) =>
-    handleFileChange(doc, e.target.files[0])
-  }
-/>
-          </div>
-        ))}
+              key={field}
+              placeholder={field.replace("_", " ")}
+              value={form[field]}
+              onChange={(e) => handleChange(field, e.target.value)}
+              style={components.input}
+            />
+          ))}
 
-        <div style={{ marginTop: 20 }}>
-          <button onClick={() => setStep(2)} style={goldButton}>
-            Back
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            style={{ ...goldButton, marginLeft: 10 }}
-          >
-            {loading ? "Submitting..." : "Submit Registration"}
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-);
+          {form.business_type === "Company" && (
+            <input
+              placeholder="Registration Number"
+              value={form.registration_number}
+              onChange={(e) =>
+                handleChange("registration_number", e.target.value)
+              }
+              style={components.input}
+            />
+          )}
+
+          <div style={{ marginTop: 20, display: "flex", gap: "15px" }}>
+            <GoldButton onClick={() => setStep(1)}>Back</GoldButton>
+
+            <GoldButton
+              disabled={!validateStep2()}
+              onClick={() => setStep(3)}
+            >
+              Next
+            </GoldButton>
+          </div>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          <h3 style={typography.subHeading}>
+            Step C – Upload Required Documents
+          </h3>
+
+          {requiredDocs[form.business_type]?.map(doc => (
+            <div key={doc} style={{ marginBottom: 15 }}>
+              <label style={{ color: colors.white }}>{doc}</label>
+              <input
+                type="file"
+                onChange={(e) =>
+                  handleFileChange(doc, e.target.files[0])
+                }
+              />
+            </div>
+          ))}
+
+          <div style={{ marginTop: 20, display: "flex", gap: "15px" }}>
+            <GoldButton onClick={() => setStep(2)}>
+              Back
+            </GoldButton>
+
+            <GoldButton
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? "Submitting..." : "Submit Registration"}
+            </GoldButton>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 

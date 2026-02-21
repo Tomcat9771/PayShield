@@ -34,9 +34,20 @@ export default function Dashboard() {
   return (
     <div style={layout.contentWrapper}>
       <h1 style={typography.heading}>Dashboard</h1>
+
+      <div
+        style={{
+          width: "80px",
+          height: "3px",
+          background: "linear-gradient(to right, #F1C50E, transparent)",
+          marginBottom: "30px",
+        }}
+      />
+
       <p style={typography.text}>
         Welcome to your PayShield control panel.
       </p>
     </div>
   );
 }
+
