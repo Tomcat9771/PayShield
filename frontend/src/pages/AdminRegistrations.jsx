@@ -20,16 +20,24 @@ export default function AdminRegistrations() {
         status,
         rejection_reason,
         created_at,
-        fee_paid,
         businesses (
           id,
           business_name,
-          business_type
+          business_type,
+          registration_fee_paid
         ),
         business_documents (
           id,
           document_type,
           verified
+        ),
+        registration_history (
+          id,
+          old_status,
+          new_status,
+          rejection_reason,
+          changed_by,
+          changed_at
         )
       `)
       .order("created_at", { ascending: false });
@@ -72,7 +80,7 @@ export default function AdminRegistrations() {
   };
 
   /* ======================================
-     REJECT (Still Direct For Now)
+     REJECT
   ====================================== */
   const rejectRegistration = async (id) => {
     const reason = prompt("Enter rejection reason:");
@@ -137,35 +145,35 @@ export default function AdminRegistrations() {
           required.every((r) => verifiedDocs.includes(r));
 
         const canApprove =
-          reg.status === "pending" &&
-          allDocsVerified;
+          reg.status === "pending" && allDocsVerified;
+
+        // 🔥 SORT HISTORY NEWEST FIRST
+        const history = (reg.registration_history || []).sort(
+          (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+        );
 
         return (
           <div
             key={reg.id}
             style={{
               border: "1px solid #ddd",
-              padding: "15px",
-              marginBottom: "15px",
-              borderRadius: "6px",
+              padding: "20px",
+              marginBottom: "20px",
+              borderRadius: "8px",
+              background: "#fff",
             }}
           >
             <p>
               <strong>Business:</strong> {business?.business_name}
             </p>
+
             <p>
               <strong>Status:</strong> {reg.status}
             </p>
 
-            {reg.status === "rejected" && (
-              <p style={{ color: "red" }}>
-                <strong>Reason:</strong> {reg.rejection_reason}
-              </p>
-            )}
-
             <p>
               <strong>Fee Paid:</strong>{" "}
-              {reg.fee_paid ? "Yes" : "No"}
+              {business?.registration_fee_paid ? "Yes" : "No"}
             </p>
 
             <p>
@@ -173,30 +181,84 @@ export default function AdminRegistrations() {
               {verifiedDocs.length} / {required.length}
             </p>
 
-            {canApprove ? (
-              <GoldButton
-                onClick={() => approveRegistration(reg.id)}
+            {/* =========================
+                REGISTRATION HISTORY
+            ========================== */}
+            {history.length > 0 && (
+              <div
+                style={{
+                  marginTop: 15,
+                  padding: 15,
+                  background: "#f8f9fa",
+                  borderRadius: 8,
+                }}
               >
-                Approve
-              </GoldButton>
-            ) : (
-              <GoldButton disabled>
-                Approval Requirements Not Met
-              </GoldButton>
+                <strong>Registration History</strong>
+
+                {history.map((h) => (
+                  <div
+                    key={h.id}
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      background: "#ffffff",
+                      borderRadius: 6,
+                      border: "1px solid #eee",
+                    }}
+                  >
+                    <div>
+                      {h.old_status} → {h.new_status}
+                    </div>
+
+                    {h.rejection_reason && (
+                      <div style={{ color: "#c0392b", marginTop: 5 }}>
+                        Reason: {h.rejection_reason}
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        fontSize: 12,
+                        marginTop: 5,
+                        opacity: 0.6,
+                      }}
+                    >
+                      {new Date(h.changed_at).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {reg.status === "pending" && (
-              <GoldButton
-                style={{
-                  marginLeft: 10,
-                  backgroundColor: "#c0392b",
-                  color: "white",
-                }}
-                onClick={() => rejectRegistration(reg.id)}
-              >
-                Reject
-              </GoldButton>
-            )}
+            {/* =========================
+                ACTION BUTTONS
+            ========================== */}
+            <div style={{ marginTop: 15 }}>
+              {canApprove ? (
+                <GoldButton
+                  onClick={() => approveRegistration(reg.id)}
+                >
+                  Approve
+                </GoldButton>
+              ) : (
+                <GoldButton disabled>
+                  Approval Requirements Not Met
+                </GoldButton>
+              )}
+
+              {reg.status === "pending" && (
+                <GoldButton
+                  style={{
+                    marginLeft: 10,
+                    backgroundColor: "#c0392b",
+                    color: "white",
+                  }}
+                  onClick={() => rejectRegistration(reg.id)}
+                >
+                  Reject
+                </GoldButton>
+              )}
+            </div>
           </div>
         );
       })}
