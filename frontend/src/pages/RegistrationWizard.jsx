@@ -284,7 +284,12 @@ return (
         {requiredDocs[form.business_type]?.map((doc) => (
           <div key={doc} style={{ marginBottom: 15 }}>
             <label style={{ color: "white" }}>{doc}</label>
-            <input type="file" />
+            <input
+  type="file"
+  onChange={(e) =>
+    handleFileChange(doc, e.target.files[0])
+  }
+/>
           </div>
         ))}
 
@@ -304,5 +309,5 @@ return (
     )}
   </div>
 );
-
+}
 
