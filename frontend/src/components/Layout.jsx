@@ -54,7 +54,7 @@ export default function Layout({ children }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
   <img
-    src="/shieldspay-logo.png"
+    src="/shieldpay-logo.png"
     alt="PayShield Logo"
     style={{ height: "50px" }}
   />

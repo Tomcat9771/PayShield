@@ -64,7 +64,7 @@ export default function Login() {
       >
         {/* Logo */}
         <img
-          src="/shieldspay-logo.png"
+          src="/shieldpay-logo.png"
           alt="PayShield Logo"
           style={{
             height: "60px",
