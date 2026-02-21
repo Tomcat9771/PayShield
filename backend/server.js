@@ -4,7 +4,7 @@ import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
 import approveRegistrationRouter from "./routes/admin/approveRegistration.js";
 
-app.use("/api/admin/approve-registration", approveRegistrationRouter);
+
 
 /* =========================
    CREATE APP FIRST
@@ -48,7 +48,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use("/api/admin/approve-registration", approveRegistrationRouter);
 /* =========================
    OZOW WEBHOOK (RAW BODY REQUIRED)
 ========================= */
