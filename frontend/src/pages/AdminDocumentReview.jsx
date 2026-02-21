@@ -8,12 +8,6 @@ export default function AdminDocumentReview() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
 const navigate = useNavigate();
-<GoldButton
-  onClick={() => navigate("/admin/dashboard")}
-  style={{ marginBottom: "20px" }}
->
-  ← Back to Dashboard
-</GoldButton>
 
   useEffect(() => {
     fetchData();
@@ -97,6 +91,12 @@ const navigate = useNavigate();
   return (
     <div style={{ padding: 40 }}>
       <h2>Admin – Document Review</h2>
+<GoldButton
+    onClick={() => navigate("/admin/dashboard")}
+    style={{ marginBottom: "25px" }}
+  >
+    ← Back to Dashboard
+  </GoldButton>
 
       {registrations.map(reg => {
 
