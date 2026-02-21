@@ -143,16 +143,16 @@ const handleSubmit = async () => {
       /* =========================
          RESET REGISTRATION STATUS
       ========================= */
-      await supabase
-        .from("business_registrations")
-        .update({
-          status: "pending",
-          rejection_reason: null,
-          reviewed_at: null,
-          reviewed_by: null
-        })
-        .eq("id", currentRegistrationId);
+      const { data, error } = await supabase
+  .from("business_registrations")
+  .update({
+    status: "pending",
+    rejection_reason: null
+  })
+  .eq("id", currentRegistrationId)
+  .select();
 
+console.log("Update result:", data, error);
     } else {
       /* =========================
          CREATE NEW BUSINESS
