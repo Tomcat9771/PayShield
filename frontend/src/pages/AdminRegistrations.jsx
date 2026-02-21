@@ -20,11 +20,11 @@ export default function AdminRegistrations() {
         status,
         rejection_reason,
         created_at,
+        fee_paid,
         businesses (
           id,
           business_name,
-          business_type,
-          registration_fee_paid
+          business_type
         ),
         business_documents (
           id,
@@ -41,18 +41,39 @@ export default function AdminRegistrations() {
     setLoading(false);
   };
 
-  const approveRegistration = async (id) => {
-    await supabase
-      .from("business_registrations")
-      .update({
-        status: "approved",
-        rejection_reason: null
-      })
-      .eq("id", id);
+  /* ======================================
+     APPROVE VIA BACKEND (EMAIL TRIGGERED)
+  ====================================== */
+  const approveRegistration = async (registrationId) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/approve-registration`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ registrationId }),
+        }
+      );
 
-    fetchRegistrations();
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Approval failed");
+        return;
+      }
+
+      fetchRegistrations();
+    } catch (err) {
+      console.error(err);
+      alert("Approval failed");
+    }
   };
 
+  /* ======================================
+     REJECT (Still Direct For Now)
+  ====================================== */
   const rejectRegistration = async (id) => {
     const reason = prompt("Enter rejection reason:");
 
@@ -65,14 +86,15 @@ export default function AdminRegistrations() {
       .from("business_registrations")
       .update({
         status: "rejected",
-        rejection_reason: reason
+        rejection_reason: reason,
       })
       .eq("id", id);
 
     fetchRegistrations();
   };
 
-  if (loading) return <div style={{ padding: 40 }}>Loading registrations...</div>;
+  if (loading)
+    return <div style={{ padding: 40 }}>Loading registrations...</div>;
 
   return (
     <div style={{ padding: 40 }}>
@@ -95,28 +117,27 @@ export default function AdminRegistrations() {
             "proof_of_address",
             "proof_of_bank",
             "director_ids",
-            "appointment_letter"
+            "appointment_letter",
           ],
           "Sole Proprietor": [
             "id",
             "proof_of_address",
-            "proof_of_bank"
-          ]
+            "proof_of_bank",
+          ],
         };
 
         const required = requiredDocs[business?.business_type] || [];
 
         const verifiedDocs = docs
-          .filter(d => d.verified)
-          .map(d => d.document_type);
+          .filter((d) => d.verified)
+          .map((d) => d.document_type);
 
         const allDocsVerified =
           required.length > 0 &&
-          required.every(r => verifiedDocs.includes(r));
+          required.every((r) => verifiedDocs.includes(r));
 
         const canApprove =
           reg.status === "pending" &&
-          business?.registration_fee_paid &&
           allDocsVerified;
 
         return (
@@ -126,11 +147,15 @@ export default function AdminRegistrations() {
               border: "1px solid #ddd",
               padding: "15px",
               marginBottom: "15px",
-              borderRadius: "6px"
+              borderRadius: "6px",
             }}
           >
-            <p><strong>Business:</strong> {business?.business_name}</p>
-            <p><strong>Status:</strong> {reg.status}</p>
+            <p>
+              <strong>Business:</strong> {business?.business_name}
+            </p>
+            <p>
+              <strong>Status:</strong> {reg.status}
+            </p>
 
             {reg.status === "rejected" && (
               <p style={{ color: "red" }}>
@@ -140,7 +165,7 @@ export default function AdminRegistrations() {
 
             <p>
               <strong>Fee Paid:</strong>{" "}
-              {business?.registration_fee_paid ? "Yes" : "No"}
+              {reg.fee_paid ? "Yes" : "No"}
             </p>
 
             <p>
@@ -149,7 +174,9 @@ export default function AdminRegistrations() {
             </p>
 
             {canApprove ? (
-              <GoldButton onClick={() => approveRegistration(reg.id)}>
+              <GoldButton
+                onClick={() => approveRegistration(reg.id)}
+              >
                 Approve
               </GoldButton>
             ) : (
@@ -160,7 +187,11 @@ export default function AdminRegistrations() {
 
             {reg.status === "pending" && (
               <GoldButton
-                style={{ marginLeft: 10, backgroundColor: "#c0392b", color: "white" }}
+                style={{
+                  marginLeft: 10,
+                  backgroundColor: "#c0392b",
+                  color: "white",
+                }}
                 onClick={() => rejectRegistration(reg.id)}
               >
                 Reject

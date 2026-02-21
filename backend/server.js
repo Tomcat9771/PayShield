@@ -2,7 +2,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
+import approveRegistrationRouter from "./routes/admin/approveRegistration.js";
 
+app.use("/api/admin/approve-registration", approveRegistrationRouter);
 
 /* =========================
    CREATE APP FIRST
