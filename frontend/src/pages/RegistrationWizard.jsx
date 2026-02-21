@@ -111,26 +111,41 @@ export default function RegistrationWizard() {
       const user = userData.user;
 
       if (isEditMode) {
-        /* =========================
-           UPDATE BUSINESS
-        ========================= */
-        await supabase
-          .from("businesses")
-          .update(form)
-          .eq("id", businessId);
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
 
-        /* =========================
-           RESET REGISTRATION STATUS
-        ========================= */
-        await supabase
-          .from("business_registrations")
-          .update({
-            status: "pending",
-            rejection_reason: null
-          })
-          .eq("id", registrationId);
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
 
-      } else {
+  const { data: registration } = await supabase
+    .from("business_registrations")
+    .select("id")
+    .eq("business_id", business.id)
+    .single();
+
+  // Update business
+  await supabase
+    .from("businesses")
+    .update(form)
+    .eq("id", business.id);
+
+  // Reset registration status
+  await supabase
+    .from("business_registrations")
+    .update({
+      status: "pending",
+      rejection_reason: null,
+      reviewed_at: null,
+      reviewed_by: null
+    })
+    .eq("id", registration.id);
+
+  setBusinessId(business.id);
+  setRegistrationId(registration.id);
+}
         /* =========================
            CREATE NEW BUSINESS
         ========================= */
