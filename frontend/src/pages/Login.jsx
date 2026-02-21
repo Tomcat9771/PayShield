@@ -10,7 +10,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Only auto-redirect if coming fresh and already logged in
   useEffect(() => {
     const checkSession = async () => {
       const {
@@ -30,7 +29,7 @@ export default function Login() {
     setLoading(true);
     setError("");
 
-    // 🔥 Force logout first (so you can switch accounts cleanly)
+    // Ensure clean account switching
     await supabase.auth.signOut();
 
     const { error } = await supabase.auth.signInWithPassword({
