@@ -14,6 +14,7 @@ import AdminDocumentReview from "./pages/AdminDocumentReview";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import RegistrationRejected from "./pages/RegistrationRejected";
 
 function App() {
   return (
@@ -56,7 +57,16 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+<Route
+  path="/registration-rejected"
+  element={
+    <ProtectedRoute mode="auth">
+      <Layout>
+        <RegistrationRejected />
+      </Layout>
+    </ProtectedRoute>
+  }
+/>
       <Route
         path="/pay-registration"
         element={

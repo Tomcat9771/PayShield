@@ -18,8 +18,51 @@ export default function Dashboard() {
           return;
         }
 
-        setLoading(false);
+        // 1️⃣ Get business
+        const { data: business } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!business) {
+          navigate("/create-business");
+          return;
+        }
+
+        // 2️⃣ Get registration
+        const { data: registration } = await supabase
+          .from("business_registrations")
+          .select("status")
+          .eq("business_id", business.id)
+          .single();
+
+        if (!registration) {
+          navigate("/create-business");
+          return;
+        }
+
+        // 3️⃣ Handle status properly (NO FALLTHROUGH)
+        if (registration.status === "pending") {
+          navigate("/awaiting-approval");
+          return;
+        }
+
+        if (registration.status === "rejected") {
+          navigate("/registration-rejected");
+          return;
+        }
+
+        if (registration.status === "approved") {
+          setLoading(false);
+          return;
+        }
+
+        // Safety fallback
+        navigate("/create-business");
+
       } catch (err) {
+        console.error(err);
         navigate("/login");
       }
     };
@@ -50,4 +93,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

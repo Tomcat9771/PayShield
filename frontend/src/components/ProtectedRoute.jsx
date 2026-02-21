@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 export default function ProtectedRoute({ children, mode = "auth" }) {
-  const [status, setStatus] = useState("loading"); // loading | redirect | done
+  const [status, setStatus] = useState("loading");
   const [redirect, setRedirect] = useState(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
         }
 
         /* =========================
-           GET PROFILE (optional)
+           PROFILE (ADMIN CHECK)
         ========================= */
         const { data: profile } = await supabase
           .from("profiles")
@@ -39,12 +39,13 @@ export default function ProtectedRoute({ children, mode = "auth" }) {
           .maybeSingle();
 
         const isAdmin = profile?.role === "admin";
-// 🔥 ADMIN OVERRIDE
-if (isAdmin && mode !== "admin") {
-  setRedirect("/admin/dashboard");
-  setStatus("redirect");
-  return;
-}
+
+        // Admin override
+        if (isAdmin && mode !== "admin") {
+          setRedirect("/admin/dashboard");
+          setStatus("redirect");
+          return;
+        }
 
         if (mode === "admin") {
           if (isAdmin) {
@@ -57,7 +58,7 @@ if (isAdmin && mode !== "admin") {
         }
 
         /* =========================
-           GET BUSINESS
+           BUSINESS
         ========================= */
         const { data: business } = await supabase
           .from("businesses")
@@ -82,7 +83,7 @@ if (isAdmin && mode !== "admin") {
         }
 
         /* =========================
-           GET REGISTRATION
+           REGISTRATION
         ========================= */
         const { data: registration } = await supabase
           .from("business_registrations")
@@ -90,7 +91,6 @@ if (isAdmin && mode !== "admin") {
           .eq("business_id", business.id)
           .maybeSingle();
 
-        // If no registration exists yet → go create-business
         if (!registration) {
           setRedirect("/create-business");
           setStatus("redirect");
@@ -103,10 +103,23 @@ if (isAdmin && mode !== "admin") {
         if (mode === "pending") {
           if (registration.status === "pending") {
             setStatus("done");
-          } else {
+            return;
+          }
+
+          if (registration.status === "rejected") {
+            setRedirect("/registration-rejected");
+            setStatus("redirect");
+            return;
+          }
+
+          if (registration.status === "approved") {
             setRedirect("/dashboard");
             setStatus("redirect");
+            return;
           }
+
+          setRedirect("/create-business");
+          setStatus("redirect");
           return;
         }
 
@@ -114,12 +127,21 @@ if (isAdmin && mode !== "admin") {
            APPROVED MODE
         ========================= */
         if (mode === "approved") {
+
+          if (registration.status === "rejected") {
+            setRedirect("/registration-rejected");
+            setStatus("redirect");
+            return;
+          }
+
+          if (registration.status === "pending") {
+            setRedirect("/awaiting-approval");
+            setStatus("redirect");
+            return;
+          }
+
           if (registration.status !== "approved") {
-            if (registration.status === "pending") {
-              setRedirect("/awaiting-approval");
-            } else {
-              setRedirect("/create-business");
-            }
+            setRedirect("/create-business");
             setStatus("redirect");
             return;
           }
@@ -135,6 +157,7 @@ if (isAdmin && mode !== "admin") {
         }
 
         setStatus("done");
+
       } catch (err) {
         console.error(err);
         setRedirect("/login");
@@ -155,4 +178,3 @@ if (isAdmin && mode !== "admin") {
 
   return children;
 }
-

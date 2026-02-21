@@ -3,11 +3,10 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import GoldButton from "../components/GoldButton";
 
-
 export default function AdminRegistrations() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchRegistrations();
@@ -19,6 +18,7 @@ const navigate = useNavigate();
       .select(`
         id,
         status,
+        rejection_reason,
         created_at,
         businesses (
           id,
@@ -41,28 +41,49 @@ const navigate = useNavigate();
     setLoading(false);
   };
 
-  const updateStatus = async (id, status) => {
-    const { error } = await supabase
+  const approveRegistration = async (id) => {
+    await supabase
       .from("business_registrations")
-      .update({ status })
+      .update({
+        status: "approved",
+        rejection_reason: null
+      })
       .eq("id", id);
 
-    if (!error) {
-      fetchRegistrations();
-    }
+    fetchRegistrations();
   };
 
-  if (loading) return <div>Loading registrations...</div>;
+  const rejectRegistration = async (id) => {
+    const reason = prompt("Enter rejection reason:");
+
+    if (!reason || reason.trim() === "") {
+      alert("Rejection reason is required.");
+      return;
+    }
+
+    await supabase
+      .from("business_registrations")
+      .update({
+        status: "rejected",
+        rejection_reason: reason
+      })
+      .eq("id", id);
+
+    fetchRegistrations();
+  };
+
+  if (loading) return <div style={{ padding: 40 }}>Loading registrations...</div>;
 
   return (
     <div style={{ padding: 40 }}>
       <h2>Admin – Business Registrations</h2>
-<GoldButton
-    onClick={() => navigate("/admin/dashboard")}
-    style={{ marginBottom: "25px" }}
-  >
-    ← Back to Dashboard
-  </GoldButton>
+
+      <GoldButton
+        onClick={() => navigate("/admin/dashboard")}
+        style={{ marginBottom: "25px" }}
+      >
+        ← Back to Dashboard
+      </GoldButton>
 
       {registrations.map((reg) => {
         const business = reg.businesses;
@@ -104,38 +125,46 @@ const navigate = useNavigate();
             style={{
               border: "1px solid #ddd",
               padding: "15px",
-              marginBottom: "10px",
+              marginBottom: "15px",
               borderRadius: "6px"
             }}
           >
             <p><strong>Business:</strong> {business?.business_name}</p>
             <p><strong>Status:</strong> {reg.status}</p>
+
+            {reg.status === "rejected" && (
+              <p style={{ color: "red" }}>
+                <strong>Reason:</strong> {reg.rejection_reason}
+              </p>
+            )}
+
             <p>
               <strong>Fee Paid:</strong>{" "}
               {business?.registration_fee_paid ? "Yes" : "No"}
             </p>
+
             <p>
               <strong>Documents Verified:</strong>{" "}
               {verifiedDocs.length} / {required.length}
             </p>
 
             {canApprove ? (
-              <button onClick={() => updateStatus(reg.id, "approved")}>
+              <GoldButton onClick={() => approveRegistration(reg.id)}>
                 Approve
-              </button>
+              </GoldButton>
             ) : (
-              <button disabled style={{ background: "#ccc" }}>
+              <GoldButton disabled>
                 Approval Requirements Not Met
-              </button>
+              </GoldButton>
             )}
 
             {reg.status === "pending" && (
-              <button
-                style={{ marginLeft: 10, background: "red", color: "white" }}
-                onClick={() => updateStatus(reg.id, "rejected")}
+              <GoldButton
+                style={{ marginLeft: 10, backgroundColor: "#c0392b", color: "white" }}
+                onClick={() => rejectRegistration(reg.id)}
               >
                 Reject
-              </button>
+              </GoldButton>
             )}
           </div>
         );
