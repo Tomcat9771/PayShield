@@ -197,9 +197,6 @@ if ((nameChanged || idChanged) && !d.id_file) {
 if (!d.existing_file_url && !d.id_file) {
   return `Please upload ID document for Director ${i + 1}.`;
 } 
-{
-      return `Please complete all fields for Director ${i + 1}.`;
-    }
   }
 }
   const required = requiredDocs[form.business_type] || [];
