@@ -159,7 +159,7 @@ if (validationError) {
 setErrorBottom(null);
 
     setLoading(true);
-    setError(null);
+    setErrorBottom(null);
 
     try {
       const { data: userData } = await supabase.auth.getUser();
