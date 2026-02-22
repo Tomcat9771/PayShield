@@ -38,9 +38,6 @@ export default function RegistrationWizard() {
     ]
   };
 
-  /* =========================
-     LOAD EXISTING IF REJECTED
-  ========================= */
   useEffect(() => {
     const loadExisting = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -91,12 +88,9 @@ export default function RegistrationWizard() {
     return required.every(doc => documents[doc] || isEditMode);
   };
 
-  /* =========================
-     SUBMIT
-  ========================= */
   const handleSubmit = async () => {
     if (!validateDocuments()) {
-      setError("Please upload required documents.");
+      setError("Please upload all required documents.");
       return;
     }
 
@@ -106,7 +100,7 @@ export default function RegistrationWizard() {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("Not authenticated");
 
       let currentBusinessId;
       let currentRegistrationId;
@@ -194,14 +188,11 @@ export default function RegistrationWizard() {
     }
   };
 
-  /* =========================
-     UI
-  ========================= */
   return (
     <div style={layout.page}>
       <div style={layout.card}>
         <h2 style={typography.heading}>
-          {isEditMode ? "Edit & Resubmit Business" : "Create Business"}
+          {isEditMode ? "Edit & Resubmit Business" : "Register Business"}
         </h2>
 
         {error && (
@@ -210,33 +201,59 @@ export default function RegistrationWizard() {
           </div>
         )}
 
-        <input
-          type="text"
-          placeholder="Business Name"
+        <select
+          value={form.business_type}
+          onChange={(e) => handleChange("business_type", e.target.value)}
+        >
+          <option value="">Select Business Type</option>
+          <option value="Company">Company</option>
+          <option value="Sole Proprietor">Sole Proprietor</option>
+        </select>
+
+        <input placeholder="Business Name"
           value={form.business_name}
           onChange={(e) => handleChange("business_name", e.target.value)}
         />
 
-        <input
-          type="text"
-          placeholder="Owner Name"
+        <input placeholder="Owner Name"
           value={form.owner_name}
           onChange={(e) => handleChange("owner_name", e.target.value)}
         />
 
-        <input
-          type="text"
-          placeholder="Phone"
+        <input placeholder="Phone"
           value={form.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
         />
 
-        <input
-          type="text"
-          placeholder="Email"
+        <input placeholder="Email"
           value={form.email}
           onChange={(e) => handleChange("email", e.target.value)}
         />
+
+        <input placeholder="Address"
+          value={form.address}
+          onChange={(e) => handleChange("address", e.target.value)}
+        />
+
+        <input placeholder="Registration Number"
+          value={form.registration_number}
+          onChange={(e) => handleChange("registration_number", e.target.value)}
+        />
+
+        {/* DOCUMENT UPLOADS */}
+        {form.business_type &&
+          requiredDocs[form.business_type]?.map(doc => (
+            <div key={doc} style={{ marginTop: 10 }}>
+              <label>{doc.replace(/_/g, " ")}</label>
+              <input
+                type="file"
+                onChange={(e) =>
+                  handleFileChange(doc, e.target.files[0])
+                }
+              />
+            </div>
+          ))
+        }
 
         <GoldButton onClick={handleSubmit} disabled={loading}>
           {loading ? "Submitting..." : "Submit"}
