@@ -2,17 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import GoldButton from "../components/GoldButton";
-import { layout, components, typography, colors } from "../theme";
+import { layout, typography } from "../theme";
 
 export default function RegistrationWizard() {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [businessId, setBusinessId] = useState(null);
-  const [registrationId, setRegistrationId] = useState(null);
 
   const [form, setForm] = useState({
     business_type: "",
@@ -42,7 +39,7 @@ export default function RegistrationWizard() {
   };
 
   /* =========================
-     LOAD EXISTING BUSINESS IF REJECTED
+     LOAD EXISTING IF REJECTED
   ========================= */
   useEffect(() => {
     const loadExisting = async () => {
@@ -66,9 +63,6 @@ export default function RegistrationWizard() {
 
       if (registration?.status === "rejected") {
         setIsEditMode(true);
-        setBusinessId(business.id);
-        setRegistrationId(registration.id);
-
         setForm({
           business_type: business.business_type || "",
           business_name: business.business_name || "",
@@ -97,130 +91,157 @@ export default function RegistrationWizard() {
     return required.every(doc => documents[doc] || isEditMode);
   };
 
-const handleSubmit = async () => {
-  if (!validateDocuments()) {
-    setError("Please upload required documents.");
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
-    if (!user) throw new Error("User not authenticated");
-
-    let currentBusinessId;
-    let currentRegistrationId;
-
-    if (isEditMode) {
-      /* =========================
-         FETCH CURRENT IDS
-      ========================= */
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      const { data: registration } = await supabase
-        .from("business_registrations")
-        .select("id")
-        .eq("business_id", business.id)
-        .single();
-
-      currentBusinessId = business.id;
-      currentRegistrationId = registration.id;
-
-      /* =========================
-         UPDATE BUSINESS
-      ========================= */
-      await supabase
-        .from("businesses")
-        .update(form)
-        .eq("id", currentBusinessId);
-
-      /* =========================
-         RESET REGISTRATION STATUS
-      ========================= */
-      await supabase
-        .from("business_registrations")
-        .update({
-          status: "pending",
-          rejection_reason: null
-        })
-        .eq("id", currentRegistrationId);
-
-    } else {
-      /* =========================
-         CREATE NEW BUSINESS
-      ========================= */
-      const { data: newBusiness } = await supabase
-        .from("businesses")
-        .insert({
-          ...form,
-          user_id: user.id,
-          registration_fee_paid: false
-        })
-        .select()
-        .single();
-
-      const { data: newReg } = await supabase
-        .from("business_registrations")
-        .insert({
-          business_id: newBusiness.id,
-          status: "pending"
-        })
-        .select()
-        .single();
-
-      currentBusinessId = newBusiness.id;
-      currentRegistrationId = newReg.id;
+  /* =========================
+     SUBMIT
+  ========================= */
+  const handleSubmit = async () => {
+    if (!validateDocuments()) {
+      setError("Please upload required documents.");
+      return;
     }
 
-    /* =========================
-       UPLOAD DOCUMENTS
-    ========================= */
-    for (const [docType, file] of Object.entries(documents)) {
-      if (!file) continue;
+    setLoading(true);
+    setError(null);
 
-      const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (!user) throw new Error("User not authenticated");
 
-      const { error: uploadError } = await supabase.storage
-        .from("business-documents")
-        .upload(filePath, file);
+      let currentBusinessId;
+      let currentRegistrationId;
 
-      if (uploadError) {
-        console.error("Upload failed:", uploadError);
-        continue;
-      }
+      if (isEditMode) {
+        const { data: business } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
 
-      const { error: insertError } = await supabase
-        .from("business_documents")
-        .insert({
-          business_id: currentBusinessId,
-          registration_id: currentRegistrationId,
-          document_type: docType,
-          file_url: filePath,
-          verified: false
-        });
+        const { data: registration } = await supabase
+          .from("business_registrations")
+          .select("id")
+          .eq("business_id", business.id)
+          .single();
 
-      if (insertError) {
-        console.error("Insert failed:", insertError);
+        currentBusinessId = business.id;
+        currentRegistrationId = registration.id;
+
+        await supabase
+          .from("businesses")
+          .update(form)
+          .eq("id", currentBusinessId);
+
+        await supabase
+          .from("business_registrations")
+          .update({
+            status: "pending",
+            rejection_reason: null
+          })
+          .eq("id", currentRegistrationId);
+
       } else {
-        console.log("Inserted document:", docType);
+        const { data: newBusiness } = await supabase
+          .from("businesses")
+          .insert({
+            ...form,
+            user_id: user.id,
+            registration_fee_paid: false
+          })
+          .select()
+          .single();
+
+        const { data: newReg } = await supabase
+          .from("business_registrations")
+          .insert({
+            business_id: newBusiness.id,
+            status: "pending"
+          })
+          .select()
+          .single();
+
+        currentBusinessId = newBusiness.id;
+        currentRegistrationId = newReg.id;
       }
+
+      for (const [docType, file] of Object.entries(documents)) {
+        if (!file) continue;
+
+        const filePath = `${Date.now()}-${docType}`;
+
+        await supabase.storage
+          .from("business-documents")
+          .upload(filePath, file);
+
+        await supabase
+          .from("business_documents")
+          .insert({
+            business_id: currentBusinessId,
+            registration_id: currentRegistrationId,
+            document_type: docType,
+            file_url: filePath,
+            verified: false
+          });
+      }
+
+      navigate("/dashboard");
+
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Redirect after success
-    navigate("/dashboard");
+  /* =========================
+     UI
+  ========================= */
+  return (
+    <div style={layout.page}>
+      <div style={layout.card}>
+        <h2 style={typography.heading}>
+          {isEditMode ? "Edit & Resubmit Business" : "Create Business"}
+        </h2>
 
-  } catch (err) {
-    console.error("Registration error:", err);
-    setError("Something went wrong. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+        {error && (
+          <div style={{ color: "red", marginBottom: 15 }}>
+            {error}
+          </div>
+        )}
+
+        <input
+          type="text"
+          placeholder="Business Name"
+          value={form.business_name}
+          onChange={(e) => handleChange("business_name", e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Owner Name"
+          value={form.owner_name}
+          onChange={(e) => handleChange("owner_name", e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Phone"
+          value={form.phone}
+          onChange={(e) => handleChange("phone", e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Email"
+          value={form.email}
+          onChange={(e) => handleChange("email", e.target.value)}
+        />
+
+        <GoldButton onClick={handleSubmit} disabled={loading}>
+          {loading ? "Submitting..." : "Submit"}
+        </GoldButton>
+      </div>
+    </div>
+  );
 }
