@@ -585,10 +585,14 @@ catch (err) {
           placeholder="Director Name"
           value={director.director_name}
           onChange={(e) => {
-            const updated = [...directors];
-            updated[index].director_name = e.target.value;
-            setDirectors(updated);
-          }}
+  const updated = directors.map((d, i) =>
+    i === index
+      ? { ...d, director_name: e.target.value }
+      : d
+  );
+  setDirectors(updated);
+}}
+
           style={{
             width: "100%",
             padding: "12px",
@@ -602,10 +606,13 @@ catch (err) {
           placeholder="Director ID Number"
           value={director.director_id_number}
           onChange={(e) => {
-            const updated = [...directors];
-            updated[index].director_id_number = e.target.value;
-            setDirectors(updated);
-          }}
+  const updated = directors.map((d, i) =>
+    i === index
+      ? { ...d, director_id_number: e.target.value }
+      : d
+  );
+  setDirectors(updated);
+}}
           style={{
             width: "100%",
             padding: "12px",
@@ -618,10 +625,13 @@ catch (err) {
         <input
           type="file"
           onChange={(e) => {
-            const updated = [...directors];
-            updated[index].id_file = e.target.files[0];
-            setDirectors(updated);
-          }}
+  const updated = directors.map((d, i) =>
+    i === index
+      ? { ...d, id_file: e.target.files[0] }
+      : d
+  );
+  setDirectors(updated);
+}}
         />
       </div>
     ))}
