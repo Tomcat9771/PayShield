@@ -47,7 +47,6 @@ export default function RegistrationWizard() {
       const user = userData?.user;
       if (!user) return;
 
-      // Always lock email to verified auth email
       setForm(prev => ({
         ...prev,
         email: user.email
@@ -74,7 +73,7 @@ export default function RegistrationWizard() {
           business_name: business.business_name || "",
           owner_name: business.owner_name || "",
           phone: business.phone || "",
-          email: user.email, // force verified email
+          email: user.email,
           address: business.address || "",
           registration_number: business.registration_number || "",
         });
@@ -137,7 +136,7 @@ export default function RegistrationWizard() {
           .from("businesses")
           .update({
             ...form,
-            email: user.email // force verified email
+            email: user.email
           })
           .eq("id", currentBusinessId);
 
@@ -154,7 +153,7 @@ export default function RegistrationWizard() {
           .from("businesses")
           .insert({
             ...form,
-            email: user.email, // force verified email
+            email: user.email,
             user_id: user.id,
             registration_fee_paid: false
           })
@@ -174,9 +173,6 @@ export default function RegistrationWizard() {
         currentRegistrationId = newReg.id;
       }
 
-      /* =========================
-         UPLOAD DOCUMENTS
-      ========================= */
       for (const [docType, file] of Object.entries(documents)) {
         if (!file) continue;
 
@@ -207,87 +203,175 @@ export default function RegistrationWizard() {
     }
   };
 
+  /* =========================
+     UI
+  ========================= */
   return (
-    <div style={layout.page}>
-      <div style={layout.card}>
-        <h2 style={typography.heading}>
-          {isEditMode ? "Edit & Resubmit Business" : "Register Business"}
+    <div
+      style={{
+        ...layout.page,
+        display: "flex",
+        justifyContent: "center",
+        paddingTop: "60px",
+        paddingBottom: "60px"
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "700px",
+          backgroundColor: "rgba(255,255,255,0.06)",
+          backdropFilter: "blur(8px)",
+          borderRadius: "18px",
+          padding: "40px",
+          boxShadow: "0 25px 50px rgba(0,0,0,0.35)"
+        }}
+      >
+        <h2
+          style={{
+            ...typography.heading,
+            textAlign: "center",
+            marginBottom: "35px"
+          }}
+        >
+          {isEditMode
+            ? "Edit & Resubmit Business"
+            : "Register Your Business"}
         </h2>
 
         {error && (
-          <div style={{ color: "red", marginBottom: 15 }}>
+          <div
+            style={{
+              backgroundColor: "#ffe6e6",
+              color: "#c0392b",
+              padding: "12px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              textAlign: "center"
+            }}
+          >
             {error}
           </div>
         )}
 
-        <select
-          value={form.business_type}
-          onChange={(e) => handleChange("business_type", e.target.value)}
-        >
-          <option value="">Select Business Type</option>
-          <option value="Company">Company</option>
-          <option value="Sole Proprietor">Sole Proprietor</option>
-        </select>
+        {/* Business Type */}
+        <div style={{ marginBottom: "20px" }}>
+          <label style={{ color: "white", fontSize: "14px" }}>
+            Business Type
+          </label>
+          <select
+            value={form.business_type}
+            onChange={(e) =>
+              handleChange("business_type", e.target.value)
+            }
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "none",
+              marginTop: "6px"
+            }}
+          >
+            <option value="">Select Business Type</option>
+            <option value="Company">Company</option>
+            <option value="Sole Proprietor">Sole Proprietor</option>
+          </select>
+        </div>
 
-        <input
-          placeholder="Business Name"
-          value={form.business_name}
-          onChange={(e) => handleChange("business_name", e.target.value)}
-        />
+        {[
+          ["Business Name", "business_name"],
+          ["Owner Name", "owner_name"],
+          ["Phone", "phone"],
+          ["Address", "address"],
+          ["Registration Number", "registration_number"]
+        ].map(([label, field]) => (
+          <div key={field} style={{ marginBottom: "20px" }}>
+            <label style={{ color: "white", fontSize: "14px" }}>
+              {label}
+            </label>
+            <input
+              value={form[field]}
+              onChange={(e) =>
+                handleChange(field, e.target.value)
+              }
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "none",
+                marginTop: "6px"
+              }}
+            />
+          </div>
+        ))}
 
-        <input
-          placeholder="Owner Name"
-          value={form.owner_name}
-          onChange={(e) => handleChange("owner_name", e.target.value)}
-        />
+        {/* Locked Email */}
+        <div style={{ marginBottom: "25px" }}>
+          <label style={{ color: "white", fontSize: "14px" }}>
+            Verified Email
+          </label>
+          <input
+            type="email"
+            value={form.email}
+            readOnly
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "none",
+              marginTop: "6px",
+              backgroundColor: "#e9ecef",
+              cursor: "not-allowed",
+              fontWeight: "bold"
+            }}
+          />
+        </div>
 
-        <input
-          placeholder="Phone"
-          value={form.phone}
-          onChange={(e) => handleChange("phone", e.target.value)}
-        />
-
-        {/* LOCKED VERIFIED EMAIL */}
-        <input
-          type="email"
-          value={form.email}
-          readOnly
-          style={{
-            backgroundColor: "#f1f1f1",
-            cursor: "not-allowed"
-          }}
-        />
-
-        <input
-          placeholder="Address"
-          value={form.address}
-          onChange={(e) => handleChange("address", e.target.value)}
-        />
-
-        <input
-          placeholder="Registration Number"
-          value={form.registration_number}
-          onChange={(e) => handleChange("registration_number", e.target.value)}
-        />
-
-        {/* DOCUMENT UPLOADS */}
+        {/* Documents */}
         {form.business_type &&
-          requiredDocs[form.business_type]?.map(doc => (
-            <div key={doc} style={{ marginTop: 10 }}>
-              <label>{doc.replace(/_/g, " ")}</label>
-              <input
-                type="file"
-                onChange={(e) =>
-                  handleFileChange(doc, e.target.files[0])
-                }
-              />
-            </div>
-          ))
-        }
+          requiredDocs[form.business_type]?.length > 0 && (
+            <div style={{ marginTop: "30px" }}>
+              <h4
+                style={{
+                  color: "#FFD700",
+                  marginBottom: "15px"
+                }}
+              >
+                Required Documents
+              </h4>
 
-        <GoldButton onClick={handleSubmit} disabled={loading}>
-          {loading ? "Submitting..." : "Submit"}
-        </GoldButton>
+              {requiredDocs[form.business_type].map(doc => (
+                <div key={doc} style={{ marginBottom: "18px" }}>
+                  <label style={{ color: "white", fontSize: "14px" }}>
+                    {doc.replace(/_/g, " ")}
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) =>
+                      handleFileChange(
+                        doc,
+                        e.target.files[0]
+                      )
+                    }
+                    style={{
+                      display: "block",
+                      marginTop: "6px",
+                      color: "white"
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+        <div style={{ marginTop: "35px", textAlign: "center" }}>
+          <GoldButton
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Submitting..." : "Submit"}
+          </GoldButton>
+        </div>
       </div>
     </div>
   );

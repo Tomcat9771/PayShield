@@ -14,7 +14,6 @@ export default function Register() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -24,21 +23,20 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       const { error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`
+          emailRedirectTo: `${window.location.origin}/email-confirmed`
         }
       });
 
       if (error) throw error;
 
-      setSuccess("Registration successful. Please check your email.");
-      navigate("/login");
+      // Redirect to check-email page instead of login
+      navigate("/check-email", { state: { email: form.email } });
 
     } catch (err) {
       setError(err.message);
@@ -57,7 +55,13 @@ export default function Register() {
       }}
     >
       <div style={{ ...components.card, width: "380px", textAlign: "center" }}>
-        <h2 style={typography.heading}>Create Account</h2>
+        <img
+          src="/shieldpay-logo.png"
+          alt="PayShield Logo"
+          style={{ height: "60px", marginBottom: "20px" }}
+        />
+
+        <h2 style={typography.heading}>Create PayShield Account</h2>
 
         <form onSubmit={handleRegister}>
           <input
@@ -83,8 +87,11 @@ export default function Register() {
           </GoldButton>
         </form>
 
-        {error && <p style={{ color: colors.danger }}>{error}</p>}
-        {success && <p style={{ color: colors.gold }}>{success}</p>}
+        {error && (
+          <p style={{ color: colors.danger, marginTop: 15 }}>
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );
