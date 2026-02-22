@@ -55,18 +55,13 @@ export default function AdminRegistrations() {
     setLoading(false);
   };
 
-  /* ======================================
-     APPROVE VIA BACKEND (EMAIL TRIGGERED)
-  ====================================== */
   const approveRegistration = async (registrationId) => {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/admin/approve-registration`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ registrationId }),
         }
       );
@@ -85,9 +80,6 @@ export default function AdminRegistrations() {
     }
   };
 
-  /* ======================================
-     REJECT
-  ====================================== */
   const rejectRegistration = async (id) => {
     const reason = prompt("Enter rejection reason:");
 
@@ -153,35 +145,13 @@ export default function AdminRegistrations() {
         const canApprove =
           reg.status === "pending" && allDocsVerified;
 
-        /* =========================
-           REGISTRATION HISTORY
-        ========================= */
         const history = (reg.registration_history || []).sort(
           (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
         );
 
-        /* =========================
-           BUSINESS CHANGE HISTORY
-        ========================= */
         const businessHistory = (business?.business_history || []).sort(
           (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
         );
-
-        const getChanges = (oldData, newData) => {
-          const changes = [];
-
-          Object.keys(newData || {}).forEach((key) => {
-            if (oldData?.[key] !== newData?.[key]) {
-              changes.push({
-                field: key,
-                from: oldData?.[key],
-                to: newData?.[key],
-              });
-            }
-          });
-
-          return changes;
-        };
 
         return (
           <div
@@ -212,9 +182,7 @@ export default function AdminRegistrations() {
               {verifiedDocs.length} / {required.length}
             </p>
 
-            {/* =========================
-                REGISTRATION HISTORY
-            ========================== */}
+            {/* REGISTRATION HISTORY */}
             {history.length > 0 && (
               <div
                 style={{
@@ -261,9 +229,7 @@ export default function AdminRegistrations() {
               </div>
             )}
 
-            {/* =========================
-                BUSINESS CHANGE HISTORY
-            ========================== */}
+            {/* BUSINESS CHANGE HISTORY (SHOW ALL FIELDS) */}
             {businessHistory.length > 0 && (
               <div
                 style={{
@@ -276,12 +242,15 @@ export default function AdminRegistrations() {
                 <strong>Business Changes</strong>
 
                 {businessHistory.map((entry) => {
-                  const changes = getChanges(
-                    entry.old_data,
-                    entry.new_data
-                  );
+                  const oldData = entry.old_data || {};
+                  const newData = entry.new_data || {};
 
-                  if (changes.length === 0) return null;
+                  const allFields = Array.from(
+                    new Set([
+                      ...Object.keys(oldData),
+                      ...Object.keys(newData),
+                    ])
+                  );
 
                   return (
                     <div
@@ -294,18 +263,32 @@ export default function AdminRegistrations() {
                         border: "1px solid #ddd",
                       }}
                     >
-                      {changes.map((change, index) => (
-                        <div key={index} style={{ marginBottom: 5 }}>
-                          <strong>{change.field}</strong>:{" "}
-                          <span style={{ color: "#c0392b" }}>
-                            {String(change.from || "")}
-                          </span>{" "}
-                          →{" "}
-                          <span style={{ color: "#27ae60" }}>
-                            {String(change.to || "")}
-                          </span>
-                        </div>
-                      ))}
+                      {allFields.map((field) => {
+                        const oldVal = oldData[field] ?? "";
+                        const newVal = newData[field] ?? "";
+                        const changed = oldVal !== newVal;
+
+                        return (
+                          <div key={field} style={{ marginBottom: 5 }}>
+                            <strong>{field}</strong>:{" "}
+                            <span
+                              style={{
+                                color: changed ? "#c0392b" : "#555",
+                              }}
+                            >
+                              {String(oldVal)}
+                            </span>{" "}
+                            →{" "}
+                            <span
+                              style={{
+                                color: changed ? "#27ae60" : "#555",
+                              }}
+                            >
+                              {String(newVal)}
+                            </span>
+                          </div>
+                        );
+                      })}
 
                       <div
                         style={{
@@ -322,9 +305,7 @@ export default function AdminRegistrations() {
               </div>
             )}
 
-            {/* =========================
-                ACTION BUTTONS
-            ========================== */}
+            {/* ACTION BUTTONS */}
             <div style={{ marginTop: 15 }}>
               {canApprove ? (
                 <GoldButton

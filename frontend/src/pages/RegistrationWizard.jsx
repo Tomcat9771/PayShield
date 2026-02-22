@@ -248,7 +248,33 @@ setErrorBottom(null);
 
         currentBusinessId = business.id;
         currentRegistrationId = registration.id;
+// 1️⃣ Get current business (OLD)
+const { data: oldBusiness, error: oldError } = await supabase
+  .from("businesses")
+  .select("*")
+  .eq("id", currentBusinessId)
+  .single();
 
+if (oldError) throw oldError;
+
+// 2️⃣ Prepare NEW data (what will be saved)
+const newBusinessData = {
+  ...oldBusiness,
+  ...form,
+  email: user.email
+};
+
+// 3️⃣ Insert into business_history
+const { error: historyError } = await supabase
+  .from("business_history")
+  .insert({
+    business_id: currentBusinessId,
+    old_data: oldBusiness,
+    new_data: newBusinessData,
+    changed_by: user.id
+  });
+
+if (historyError) throw historyError;
         await supabase
           .from("businesses")
           .update({
