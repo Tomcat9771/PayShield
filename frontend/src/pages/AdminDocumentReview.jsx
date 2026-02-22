@@ -35,34 +35,29 @@ export default function AdminDocumentReview() {
 
     if (!error) {
       setRegistrations(data || []);
+    } else {
+      console.error("Fetch error:", error);
     }
 
     setLoading(false);
   };
 
   /* =========================
-     VIEW DOCUMENT (BACKEND)
+     VIEW DOCUMENT (SIGNED URL DIRECT)
   ========================= */
   const viewDocument = async (filePath) => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/admin/documents/get-signed-url`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ filePath })
-        }
-      );
+      const { data, error } = await supabase.storage
+        .from("business-documents")
+        .createSignedUrl(filePath, 60); // 60 sec access
 
-      const data = await res.json();
-
-      if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        alert("Unable to generate secure link.");
+      if (error) {
+        console.error("Signed URL error:", error);
+        alert("Failed to open document.");
+        return;
       }
+
+      window.open(data.signedUrl, "_blank");
 
     } catch (err) {
       console.error(err);
@@ -71,70 +66,37 @@ export default function AdminDocumentReview() {
   };
 
   /* =========================
-     VERIFY DOCUMENT (BACKEND)
+     VERIFY DOCUMENT
   ========================= */
   const verifyDocument = async (docId) => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/admin/documents/verify`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ documentId: docId })
-        }
-      );
+    const { error } = await supabase
+      .from("business_documents")
+      .update({ verified: true })
+      .eq("id", docId);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Verification failed");
-        return;
-      }
-
-      fetchData();
-
-    } catch (err) {
-      console.error(err);
+    if (error) {
       alert("Verification failed");
+      return;
     }
+
+    fetchData();
   };
 
   /* =========================
-     REJECT DOCUMENT (OPTIONAL)
+     REJECT DOCUMENT
   ========================= */
   const rejectDocument = async (docId) => {
-    const reason = prompt("Reason for rejecting document (optional):");
+    const { error } = await supabase
+      .from("business_documents")
+      .update({ verified: false })
+      .eq("id", docId);
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/admin/documents/reject`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            documentId: docId,
-            reason
-          })
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Rejection failed");
-        return;
-      }
-
-      fetchData();
-
-    } catch (err) {
-      console.error(err);
+    if (error) {
       alert("Rejection failed");
+      return;
     }
+
+    fetchData();
   };
 
   if (loading) return <div style={{ padding: 40 }}>Loading documents...</div>;
@@ -153,7 +115,8 @@ export default function AdminDocumentReview() {
       {registrations.map(reg => {
 
         const totalDocs = reg.business_documents?.length || 0;
-        const verifiedDocs = reg.business_documents?.filter(d => d.verified).length || 0;
+        const verifiedDocs =
+          reg.business_documents?.filter(d => d.verified).length || 0;
 
         return (
           <div
