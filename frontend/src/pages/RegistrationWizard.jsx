@@ -264,10 +264,12 @@ setErrorBottom(null);
 
       navigate("/dashboard");
 
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
-    } finally {
+    } 
+catch (err) {
+  console.error(err);
+  setErrorBottom("Something went wrong. Please try again.");
+} 
+    finally {
       setLoading(false);
     }
   };
