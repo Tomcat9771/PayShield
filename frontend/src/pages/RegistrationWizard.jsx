@@ -285,15 +285,20 @@ setErrorBottom(null);
             verified: false
           });
       }
+/* =========================
+   INSERT DIRECTORS
+========================= */
 if (form.business_type === "Company") {
   for (const director of directors) {
     const filePath = `${currentBusinessId}/directors/${Date.now()}-${director.director_id_number}`;
 
-    await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("business-documents")
       .upload(filePath, director.id_file);
 
-    await supabase
+    if (uploadError) throw uploadError;
+
+    const { error: insertError } = await supabase
       .from("business_directors")
       .insert({
         business_id: currentBusinessId,
@@ -301,6 +306,8 @@ if (form.business_type === "Company") {
         director_id_number: director.director_id_number,
         id_file_url: filePath
       });
+
+    if (insertError) throw insertError;
   }
 }
       navigate("/dashboard");
