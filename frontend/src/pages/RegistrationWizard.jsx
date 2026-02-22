@@ -9,9 +9,10 @@ export default function RegistrationWizard() {
 
   const [loading, setLoading] = useState(false);
   const [errorTop, setErrorTop] = useState(null);
-const [errorBottom, setErrorBottom] = useState(null);
+  const [errorBottom, setErrorBottom] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
-
+  const [directorCount, setDirectorCount] = useState(0);
+  const [directors, setDirectors] = useState([]);
   const [form, setForm] = useState({
   business_type: "",
   business_name: "",
@@ -40,7 +41,6 @@ const [errorBottom, setErrorBottom] = useState(null);
       "cipc",
       "proof_of_address",
       "proof_of_bank",
-      "director_ids",
       "appointment_letter"
     ],
     "Sole Proprietor": [
@@ -109,6 +109,18 @@ postal_postal_code: business.postal_postal_code || "",
   const handleFileChange = (type, file) => {
     setDocuments(prev => ({ ...prev, [type]: file }));
   };
+const handleDirectorCountChange = (value) => {
+  const count = parseInt(value) || 0;
+  setDirectorCount(count);
+
+  const newDirectors = Array.from({ length: count }, (_, index) => ({
+    director_name: directors[index]?.director_name || "",
+    director_id_number: directors[index]?.director_id_number || "",
+    id_file: null
+  }));
+
+  setDirectors(newDirectors);
+};
 
   const validateForm = () => {
   if (
@@ -135,7 +147,18 @@ postal_postal_code: business.postal_postal_code || "",
       return "Please complete all postal address fields.";
     }
   }
+if (form.business_type === "Company") {
+  if (directorCount < 1) {
+    return "Please specify number of directors.";
+  }
 
+  for (let i = 0; i < directors.length; i++) {
+    const d = directors[i];
+    if (!d.director_name || !d.director_id_number || !d.id_file) {
+      return `Please complete all fields for Director ${i + 1}.`;
+    }
+  }
+}
   const required = requiredDocs[form.business_type] || [];
   const missingDocs = required.some(doc => !documents[doc] && !isEditMode);
 
@@ -145,6 +168,7 @@ postal_postal_code: business.postal_postal_code || "",
 
   return null;
 };
+
 
   /* =========================
      SUBMIT
@@ -261,7 +285,24 @@ setErrorBottom(null);
             verified: false
           });
       }
+if (form.business_type === "Company") {
+  for (const director of directors) {
+    const filePath = `${currentBusinessId}/directors/${Date.now()}-${director.director_id_number}`;
 
+    await supabase.storage
+      .from("business-documents")
+      .upload(filePath, director.id_file);
+
+    await supabase
+      .from("business_directors")
+      .insert({
+        business_id: currentBusinessId,
+        director_name: director.director_name,
+        director_id_number: director.director_id_number,
+        id_file_url: filePath
+      });
+  }
+}
       navigate("/dashboard");
 
     } 
@@ -435,6 +476,93 @@ catch (err) {
           }}
         />
       </div>
+{form.business_type === "Company" && (
+  <div style={{ marginTop: "30px" }}>
+    <h4 style={{ color: "#FFD700" }}>
+      Directors *
+    </h4>
+
+    <div style={{ marginBottom: "20px" }}>
+      <label style={{ color: "white" }}>
+        Number of Directors
+      </label>
+      <input
+        type="number"
+        min="1"
+        value={directorCount}
+        onChange={(e) =>
+          handleDirectorCountChange(e.target.value)
+        }
+        style={{
+          width: "100%",
+          padding: "12px",
+          borderRadius: "8px",
+          border: "none",
+          marginTop: "6px"
+        }}
+      />
+    </div>
+
+    {directors.map((director, index) => (
+      <div
+        key={index}
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "12px",
+          marginBottom: "20px"
+        }}
+      >
+        <h5 style={{ color: "#FFD700" }}>
+          Director {index + 1}
+        </h5>
+
+        <input
+          placeholder="Director Name"
+          value={director.director_name}
+          onChange={(e) => {
+            const updated = [...directors];
+            updated[index].director_name = e.target.value;
+            setDirectors(updated);
+          }}
+          style={{
+            width: "100%",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "none",
+            marginBottom: "10px"
+          }}
+        />
+
+        <input
+          placeholder="Director ID Number"
+          value={director.director_id_number}
+          onChange={(e) => {
+            const updated = [...directors];
+            updated[index].director_id_number = e.target.value;
+            setDirectors(updated);
+          }}
+          style={{
+            width: "100%",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "none",
+            marginBottom: "10px"
+          }}
+        />
+
+        <input
+          type="file"
+          onChange={(e) => {
+            const updated = [...directors];
+            updated[index].id_file = e.target.files[0];
+            setDirectors(updated);
+          }}
+        />
+      </div>
+    ))}
+  </div>
+)}
 
       {/* DOCUMENTS */}
       {form.business_type &&
