@@ -108,7 +108,8 @@ const handleSubmit = async () => {
 
   try {
     const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
+    const user = userData?.user;
+    if (!user) throw new Error("User not authenticated");
 
     let currentBusinessId;
     let currentRegistrationId;
@@ -143,16 +144,14 @@ const handleSubmit = async () => {
       /* =========================
          RESET REGISTRATION STATUS
       ========================= */
-      const { data, error } = await supabase
-  .from("business_registrations")
-  .update({
-    status: "pending",
-    rejection_reason: null
-  })
-  .eq("id", currentRegistrationId)
-  .select();
+      await supabase
+        .from("business_registrations")
+        .update({
+          status: "pending",
+          rejection_reason: null
+        })
+        .eq("id", currentRegistrationId);
 
-console.log("Update result:", data, error);
     } else {
       /* =========================
          CREATE NEW BUSINESS
@@ -184,32 +183,44 @@ console.log("Update result:", data, error);
        UPLOAD DOCUMENTS
     ========================= */
     for (const [docType, file] of Object.entries(documents)) {
-  if (!file) continue;
+      if (!file) continue;
 
-  const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
+      const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("business-documents")
-    .upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from("business-documents")
+        .upload(filePath, file);
 
-  if (uploadError) {
-    console.error("Upload failed:", uploadError);
-    continue;
+      if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from("business_documents")
+        .insert({
+          business_id: currentBusinessId,
+          registration_id: currentRegistrationId,
+          document_type: docType,
+          file_url: filePath,
+          verified: false
+        });
+
+      if (insertError) {
+        console.error("Insert failed:", insertError);
+      } else {
+        console.log("Inserted document:", docType);
+      }
+    }
+
+    // Redirect after success
+    navigate("/dashboard");
+
+  } catch (err) {
+    console.error("Registration error:", err);
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
   }
-
-  const { error: insertError } = await supabase
-    .from("business_documents")
-    .insert({
-      business_id: currentBusinessId,
-      registration_id: currentRegistrationId,
-      document_type: docType,
-      file_url: filePath,
-      verified: false
-    });
-
-  if (insertError) {
-    console.error("Insert failed:", insertError);
-  } else {
-    console.log("Inserted document:", docType);
-  }
+};
 }
