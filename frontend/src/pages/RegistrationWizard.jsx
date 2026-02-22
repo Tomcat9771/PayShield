@@ -264,17 +264,23 @@ const newBusinessData = {
   email: user.email
 };
 
-// 3️⃣ Insert into business_history
-const { error: historyError } = await supabase
-  .from("business_history")
-  .insert({
-    business_id: currentBusinessId,
-    old_data: oldBusiness,
-    new_data: newBusinessData,
-    changed_by: user.id
-  });
+// 3️⃣ Only log if something actually changed
+const hasChanges = Object.keys(newBusinessData).some(
+  key => JSON.stringify(oldBusiness[key]) !== JSON.stringify(newBusinessData[key])
+);
 
-if (historyError) throw historyError;
+if (hasChanges) {
+  const { error: historyError } = await supabase
+    .from("business_history")
+    .insert({
+      business_id: currentBusinessId,
+      old_data: oldBusiness,
+      new_data: newBusinessData,
+      changed_by: user.id
+    });
+
+  if (historyError) throw historyError;
+}
         await supabase
           .from("businesses")
           .update({
