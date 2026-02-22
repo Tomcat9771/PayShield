@@ -78,29 +78,52 @@ export default function RegistrationWizard() {
         .eq("business_id", business.id)
         .maybeSingle();
 
-      if (registration?.status === "rejected") {
-        setIsEditMode(true);
-        setForm({
-          business_type: business.business_type || "",
-          business_name: business.business_name || "",
-          owner_name: business.owner_name || "",
-          phone: business.phone || "",
-          email: user.email,
-          street_address: business.street_address || "",
-town: business.town || "",
-city: business.city || "",
-postal_code: business.postal_code || "",
-postal_street: business.postal_street || "",
-postal_town: business.postal_town || "",
-postal_city: business.postal_city || "",
-postal_postal_code: business.postal_postal_code || "",
-          registration_number: business.registration_number || "",
-        });
-      }
-    };
+if (registration?.status === "rejected") {
+  setIsEditMode(true);
 
-    loadData();
-  }, []);
+  setForm({
+    business_type: business.business_type || "",
+    business_name: business.business_name || "",
+    owner_name: business.owner_name || "",
+    phone: business.phone || "",
+    email: user.email,
+    street_address: business.street_address || "",
+    town: business.town || "",
+    city: business.city || "",
+    postal_code: business.postal_code || "",
+    postal_street: business.postal_street || "",
+    postal_town: business.postal_town || "",
+    postal_city: business.postal_city || "",
+    postal_postal_code: business.postal_postal_code || "",
+    registration_number: business.registration_number || "",
+  });
+
+  // LOAD EXISTING DIRECTORS
+  if (business.business_type === "Company") {
+    const { data: existingDirectors } = await supabase
+      .from("business_directors")
+      .select("*")
+      .eq("business_id", business.id);
+
+    if (existingDirectors && existingDirectors.length > 0) {
+      setDirectorCount(existingDirectors.length);
+
+        setDirectors(
+          existingDirectors.map(d => ({
+            director_name: d.director_name,
+            director_id_number: d.director_id_number,
+            id_file: null,
+            existing_file_url: d.id_file_url
+          }))
+        );
+      }
+    }
+  }
+
+};
+
+loadData();
+}, []);
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -154,7 +177,7 @@ if (form.business_type === "Company") {
 
   for (let i = 0; i < directors.length; i++) {
     const d = directors[i];
-    if (!d.director_name || !d.director_id_number || !d.id_file) {
+    if (!d.director_name || !d.director_id_number || (!d.id_file && !d.existing_file_url)) {
       return `Please complete all fields for Director ${i + 1}.`;
     }
   }
@@ -225,18 +248,6 @@ setErrorBottom(null);
   })
   .eq("id", currentRegistrationId);
 
-/* =========================
-   DELETE OLD DIRECTORS
-========================= */
-if (form.business_type === "Company") {
-  const { error: deleteError } = await supabase
-    .from("business_directors")
-    .delete()
-    .eq("business_id", currentBusinessId);
-
-  if (deleteError) throw deleteError;
-}
-
       } else {
         const { data: newBusiness } = await supabase
           .from("businesses")
@@ -301,14 +312,28 @@ if (form.business_type === "Company") {
    INSERT DIRECTORS
 ========================= */
 if (form.business_type === "Company") {
+  // Only delete existing directors in edit mode
+  if (isEditMode) {
+    const { error: deleteError } = await supabase
+      .from("business_directors")
+      .delete()
+      .eq("business_id", currentBusinessId);
+
+    if (deleteError) throw deleteError;
+  }
+
   for (const director of directors) {
-    const filePath = `${currentBusinessId}/directors/${Date.now()}-${director.director_id_number}`;
+    let filePath = director.existing_file_url || null;
 
-    const { error: uploadError } = await supabase.storage
-      .from("business-documents")
-      .upload(filePath, director.id_file);
+    if (director.id_file) {
+      filePath = `${currentBusinessId}/directors/${Date.now()}-${director.director_id_number}`;
 
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabase.storage
+        .from("business-documents")
+        .upload(filePath, director.id_file);
+
+      if (uploadError) throw uploadError;
+    }
 
     const { error: insertError } = await supabase
       .from("business_directors")
