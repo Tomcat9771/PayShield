@@ -225,18 +225,6 @@ setErrorBottom(null);
   })
   .eq("id", currentRegistrationId);
 
-/* =========================
-   DELETE OLD DIRECTORS
-========================= */
-if (form.business_type === "Company") {
-  const { error: deleteError } = await supabase
-    .from("business_directors")
-    .delete()
-    .eq("business_id", currentBusinessId);
-
-  if (deleteError) throw deleteError;
-}
-
       } else {
         const { data: newBusiness } = await supabase
           .from("businesses")
