@@ -108,14 +108,18 @@ if (registration?.status === "rejected") {
     if (existingDirectors && existingDirectors.length > 0) {
       setDirectorCount(existingDirectors.length);
 
-        setDirectors(
-          existingDirectors.map(d => ({
-            director_name: d.director_name,
-            director_id_number: d.director_id_number,
-            id_file: null,
-            existing_file_url: d.id_file_url
-          }))
-        );
+setDirectors(
+  existingDirectors.map(d => ({
+    director_name: d.director_name,
+    director_id_number: d.director_id_number,
+    id_file: null,
+    existing_file_url: d.id_file_url,
+
+    // 👇 store originals for comparison
+    original_name: d.director_name,
+    original_id_number: d.director_id_number
+  }))
+);
       }
     }
   }
@@ -177,7 +181,23 @@ if (form.business_type === "Company") {
 
   for (let i = 0; i < directors.length; i++) {
     const d = directors[i];
-    if (!d.director_name || !d.director_id_number || (!d.id_file && !d.existing_file_url)) {
+    const nameChanged = d.director_name !== d.original_name;
+const idChanged = d.director_id_number !== d.original_id_number;
+
+if (!d.director_name || !d.director_id_number) {
+  return `Please complete all fields for Director ${i + 1}.`;
+}
+
+// If changed but no new file uploaded
+if ((nameChanged || idChanged) && !d.id_file) {
+  return `Please upload a new ID document for Director ${i + 1} because details were changed.`;
+}
+
+// If new director (no existing file)
+if (!d.existing_file_url && !d.id_file) {
+  return `Please upload ID document for Director ${i + 1}.`;
+} 
+{
       return `Please complete all fields for Director ${i + 1}.`;
     }
   }
