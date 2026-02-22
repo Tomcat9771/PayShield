@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import RegistrationRejected from "./pages/RegistrationRejected";
+import EmailConfirmed from "./pages/EmailConfirmed";
 
 function App() {
   return (
@@ -144,7 +145,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+<Route path="/email-confirmed" element={<EmailConfirmed />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

@@ -38,11 +38,20 @@ export default function RegistrationWizard() {
     ]
   };
 
+  /* =========================
+     LOAD USER + EXISTING DATA
+  ========================= */
   useEffect(() => {
-    const loadExisting = async () => {
+    const loadData = async () => {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
       if (!user) return;
+
+      // Always lock email to verified auth email
+      setForm(prev => ({
+        ...prev,
+        email: user.email
+      }));
 
       const { data: business } = await supabase
         .from("businesses")
@@ -65,14 +74,14 @@ export default function RegistrationWizard() {
           business_name: business.business_name || "",
           owner_name: business.owner_name || "",
           phone: business.phone || "",
-          email: business.email || "",
+          email: user.email, // force verified email
           address: business.address || "",
           registration_number: business.registration_number || "",
         });
       }
     };
 
-    loadExisting();
+    loadData();
   }, []);
 
   const handleChange = (field, value) => {
@@ -88,6 +97,9 @@ export default function RegistrationWizard() {
     return required.every(doc => documents[doc] || isEditMode);
   };
 
+  /* =========================
+     SUBMIT
+  ========================= */
   const handleSubmit = async () => {
     if (!validateDocuments()) {
       setError("Please upload all required documents.");
@@ -123,7 +135,10 @@ export default function RegistrationWizard() {
 
         await supabase
           .from("businesses")
-          .update(form)
+          .update({
+            ...form,
+            email: user.email // force verified email
+          })
           .eq("id", currentBusinessId);
 
         await supabase
@@ -139,6 +154,7 @@ export default function RegistrationWizard() {
           .from("businesses")
           .insert({
             ...form,
+            email: user.email, // force verified email
             user_id: user.id,
             registration_fee_paid: false
           })
@@ -158,10 +174,13 @@ export default function RegistrationWizard() {
         currentRegistrationId = newReg.id;
       }
 
+      /* =========================
+         UPLOAD DOCUMENTS
+      ========================= */
       for (const [docType, file] of Object.entries(documents)) {
         if (!file) continue;
 
-        const filePath = `${Date.now()}-${docType}`;
+        const filePath = `${currentBusinessId}/${Date.now()}-${docType}`;
 
         await supabase.storage
           .from("business-documents")
@@ -210,32 +229,43 @@ export default function RegistrationWizard() {
           <option value="Sole Proprietor">Sole Proprietor</option>
         </select>
 
-        <input placeholder="Business Name"
+        <input
+          placeholder="Business Name"
           value={form.business_name}
           onChange={(e) => handleChange("business_name", e.target.value)}
         />
 
-        <input placeholder="Owner Name"
+        <input
+          placeholder="Owner Name"
           value={form.owner_name}
           onChange={(e) => handleChange("owner_name", e.target.value)}
         />
 
-        <input placeholder="Phone"
+        <input
+          placeholder="Phone"
           value={form.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
         />
 
-        <input placeholder="Email"
+        {/* LOCKED VERIFIED EMAIL */}
+        <input
+          type="email"
           value={form.email}
-          onChange={(e) => handleChange("email", e.target.value)}
+          readOnly
+          style={{
+            backgroundColor: "#f1f1f1",
+            cursor: "not-allowed"
+          }}
         />
 
-        <input placeholder="Address"
+        <input
+          placeholder="Address"
           value={form.address}
           onChange={(e) => handleChange("address", e.target.value)}
         />
 
-        <input placeholder="Registration Number"
+        <input
+          placeholder="Registration Number"
           value={form.registration_number}
           onChange={(e) => handleChange("registration_number", e.target.value)}
         />
