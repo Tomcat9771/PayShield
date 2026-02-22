@@ -49,6 +49,7 @@ app.use(
   })
 );
 app.use("/api/admin/approve-registration", approveRegistrationRouter);
+app.use("/api/admin/documents", adminDocumentsRouter);
 /* =========================
    OZOW WEBHOOK (RAW BODY REQUIRED)
 ========================= */

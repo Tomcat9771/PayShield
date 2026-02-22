@@ -3,37 +3,114 @@ import { supabase } from "../lib/supabaseClient.js";
 
 const router = express.Router();
 
-/*
-  GET /api/admin/documents/:id
-  Returns signed URL for a document
-*/
-router.get("/:id", async (req, res) => {
+/* ======================================
+   GET SIGNED URL
+====================================== */
+router.post("/get-signed-url", async (req, res) => {
   try {
-    const documentId = req.params.id;
+    const { filePath } = req.body;
 
-    // Get document record
-    const { data: doc, error } = await supabase
-      .from("business_documents")
-      .select("file_url")
-      .eq("id", documentId)
-      .single();
-
-    if (error || !doc) {
-      return res.status(404).json({ error: "Document not found" });
+    if (!filePath || typeof filePath !== "string") {
+      return res.status(400).json({ error: "Invalid file path" });
     }
 
-    // Generate signed URL (60 sec expiry)
-    const { data: signed, error: signError } = await supabase.storage
+    if (filePath.includes("..")) {
+      return res.status(400).json({ error: "Invalid file path" });
+    }
+
+    const { data, error } = await supabase.storage
       .from("business-documents")
-      .createSignedUrl(doc.file_url, 60);
+      .createSignedUrl(filePath, 60 * 5); // 5 minutes
 
-    if (signError) throw signError;
+    if (error) {
+      console.error("Signed URL error:", error);
+      return res.status(500).json({ error: "Could not generate signed URL" });
+    }
 
-    res.json({ url: signed.signedUrl });
+    return res.json({ url: data.signedUrl });
+
+  } catch (err) {
+    console.error("Server error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ======================================
+   VERIFY DOCUMENT
+====================================== */
+router.post("/verify", async (req, res) => {
+  try {
+    const { documentId } = req.body;
+
+    if (!documentId) {
+      return res.status(400).json({ error: "Missing document ID" });
+    }
+
+    const { error } = await supabase
+      .from("business_documents")
+      .update({
+        verified: true,
+        verified_at: new Date(),
+      })
+      .eq("id", documentId);
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Could not verify document" });
+    }
+
+    // Optional audit log
+    try {
+      await supabase.from("admin_audit_log").insert({
+        admin_email: "system",
+        action: "document_verified",
+        entity_type: "business_document",
+        entity_id: documentId,
+        metadata: {
+          verified_at: new Date().toISOString(),
+        },
+      });
+    } catch (logError) {
+      console.error("Audit log failed:", logError.message);
+    }
+
+    return res.json({ success: true });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to generate URL" });
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ======================================
+   REJECT DOCUMENT (OPTIONAL)
+====================================== */
+router.post("/reject", async (req, res) => {
+  try {
+    const { documentId, reason } = req.body;
+
+    if (!documentId) {
+      return res.status(400).json({ error: "Missing document ID" });
+    }
+
+    const { error } = await supabase
+      .from("business_documents")
+      .update({
+        verified: false,
+        rejection_reason: reason || null,
+      })
+      .eq("id", documentId);
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Could not reject document" });
+    }
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 

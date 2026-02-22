@@ -184,78 +184,32 @@ console.log("Update result:", data, error);
        UPLOAD DOCUMENTS
     ========================= */
     for (const [docType, file] of Object.entries(documents)) {
-      if (!file) continue;
+  if (!file) continue;
 
-      const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
+  const filePath = `${currentBusinessId}/${docType}-${Date.now()}`;
 
-      await supabase.storage
-        .from("business-documents")
-        .upload(filePath, file);
+  const { error: uploadError } = await supabase.storage
+    .from("business-documents")
+    .upload(filePath, file);
 
-      await supabase.from("business_documents").insert({
-        business_id: currentBusinessId,
-        registration_id: currentRegistrationId,
-        document_type: docType,
-        file_url: filePath,
-        verified: false
-      });
-    }
-
-    navigate("/awaiting-approval");
-
-  } catch (err) {
-    console.error(err);
-    setError("Something went wrong.");
+  if (uploadError) {
+    console.error("Upload failed:", uploadError);
+    continue;
   }
 
-  setLoading(false);
-};
+  const { error: insertError } = await supabase
+    .from("business_documents")
+    .insert({
+      business_id: currentBusinessId,
+      registration_id: currentRegistrationId,
+      document_type: docType,
+      file_url: filePath,
+      verified: false
+    });
 
-  return (
-    <div style={layout.contentWrapper}>
-      <h2 style={typography.heading}>
-        {isEditMode ? "Edit & Resubmit Registration" : "Business Registration"}
-      </h2>
-
-      {error && <p style={{ color: colors.danger }}>{error}</p>}
-
-      <div style={{ ...components.card, marginTop: 20 }}>
-        <select
-          value={form.business_type}
-          onChange={(e) => handleChange("business_type", e.target.value)}
-          style={components.input}
-        >
-          <option value="">Select Type</option>
-          <option value="Sole Proprietor">Sole Proprietor</option>
-          <option value="Company">Company</option>
-        </select>
-
-        {Object.keys(form)
-          .filter(f => f !== "business_type")
-          .map(field => (
-            <input
-              key={field}
-              placeholder={field.replace("_", " ")}
-              value={form[field]}
-              onChange={(e) => handleChange(field, e.target.value)}
-              style={components.input}
-            />
-          ))}
-
-        {requiredDocs[form.business_type]?.map(doc => (
-          <div key={doc} style={{ marginBottom: 10 }}>
-            <label>{doc}</label>
-            <input
-              type="file"
-              onChange={(e) => handleFileChange(doc, e.target.files[0])}
-            />
-          </div>
-        ))}
-
-        <GoldButton onClick={handleSubmit} disabled={loading}>
-          {loading ? "Submitting..." : "Submit"}
-        </GoldButton>
-      </div>
-    </div>
-  );
+  if (insertError) {
+    console.error("Insert failed:", insertError);
+  } else {
+    console.log("Inserted document:", docType);
+  }
 }

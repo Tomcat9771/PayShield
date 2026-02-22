@@ -3,11 +3,10 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import GoldButton from "../components/GoldButton";
 
-
 export default function AdminDocumentReview() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -35,26 +34,25 @@ const navigate = useNavigate();
       .order("created_at", { ascending: false });
 
     if (!error) {
-      setRegistrations(data);
+      setRegistrations(data || []);
     }
 
     setLoading(false);
   };
 
   /* =========================
-     VIEW DOCUMENT (BACKEND SIGNED URL)
+     VIEW DOCUMENT (BACKEND)
   ========================= */
-  const viewDocument = async (docId) => {
+  const viewDocument = async (filePath) => {
     try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session.access_token;
-
       const res = await fetch(
-        `http://localhost:4000/api/admin/documents/${docId}`,
+        `${import.meta.env.VITE_API_URL}/api/admin/documents/get-signed-url`,
         {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ filePath })
         }
       );
 
@@ -73,30 +71,84 @@ const navigate = useNavigate();
   };
 
   /* =========================
-     VERIFY / UNVERIFY DOC
+     VERIFY DOCUMENT (BACKEND)
   ========================= */
-  const toggleVerify = async (docId, currentStatus) => {
-    const { error } = await supabase
-      .from("business_documents")
-      .update({ verified: !currentStatus })
-      .eq("id", docId);
+  const verifyDocument = async (docId) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/documents/verify`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ documentId: docId })
+        }
+      );
 
-    if (!error) {
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Verification failed");
+        return;
+      }
+
       fetchData();
+
+    } catch (err) {
+      console.error(err);
+      alert("Verification failed");
     }
   };
 
-  if (loading) return <div>Loading documents...</div>;
+  /* =========================
+     REJECT DOCUMENT (OPTIONAL)
+  ========================= */
+  const rejectDocument = async (docId) => {
+    const reason = prompt("Reason for rejecting document (optional):");
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/admin/documents/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            documentId: docId,
+            reason
+          })
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Rejection failed");
+        return;
+      }
+
+      fetchData();
+
+    } catch (err) {
+      console.error(err);
+      alert("Rejection failed");
+    }
+  };
+
+  if (loading) return <div style={{ padding: 40 }}>Loading documents...</div>;
 
   return (
     <div style={{ padding: 40 }}>
       <h2>Admin – Document Review</h2>
-<GoldButton
-    onClick={() => navigate("/admin/dashboard")}
-    style={{ marginBottom: "25px" }}
-  >
-    ← Back to Dashboard
-  </GoldButton>
+
+      <GoldButton
+        onClick={() => navigate("/admin/dashboard")}
+        style={{ marginBottom: "25px" }}
+      >
+        ← Back to Dashboard
+      </GoldButton>
 
       {registrations.map(reg => {
 
@@ -107,10 +159,11 @@ const navigate = useNavigate();
           <div
             key={reg.id}
             style={{
-              border: "1px solid #ccc",
+              border: "1px solid #ddd",
               marginBottom: 20,
               padding: 20,
-              borderRadius: 6
+              borderRadius: 8,
+              background: "#fff"
             }}
           >
             <h3>{reg.businesses?.business_name}</h3>
@@ -126,10 +179,11 @@ const navigate = useNavigate();
               <div
                 key={doc.id}
                 style={{
-                  marginBottom: 10,
-                  padding: 10,
-                  background: "#f8f8f8",
-                  borderRadius: 4
+                  marginBottom: 15,
+                  padding: 15,
+                  background: "#f8f9fa",
+                  borderRadius: 6,
+                  border: "1px solid #eee"
                 }}
               >
                 <p>
@@ -143,16 +197,35 @@ const navigate = useNavigate();
                   </span>
                 </p>
 
-                <button onClick={() => viewDocument(doc.id)}>
-                  View
-                </button>
+                <div style={{ marginTop: 10 }}>
+                  <GoldButton
+                    onClick={() => viewDocument(doc.file_url)}
+                  >
+                    View
+                  </GoldButton>
 
-                <button
-                  style={{ marginLeft: 10 }}
-                  onClick={() => toggleVerify(doc.id, doc.verified)}
-                >
-                  {doc.verified ? "Unverify" : "Verify"}
-                </button>
+                  {!doc.verified && (
+                    <GoldButton
+                      style={{ marginLeft: 10 }}
+                      onClick={() => verifyDocument(doc.id)}
+                    >
+                      Verify
+                    </GoldButton>
+                  )}
+
+                  {doc.verified && (
+                    <GoldButton
+                      style={{
+                        marginLeft: 10,
+                        backgroundColor: "#c0392b",
+                        color: "white"
+                      }}
+                      onClick={() => rejectDocument(doc.id)}
+                    >
+                      Reject
+                    </GoldButton>
+                  )}
+                </div>
               </div>
             ))}
           </div>
