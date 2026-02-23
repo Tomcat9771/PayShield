@@ -9,6 +9,8 @@ const supabase = createClient(
 );
 
 router.post("/approve-registration", async (req, res) => {
+  console.log("🔥 APPROVE ROUTE HIT - NEW VERSION");
+
   try {
     const { registrationId } = req.body;
 
@@ -16,10 +18,10 @@ router.post("/approve-registration", async (req, res) => {
       return res.status(400).json({ error: "registrationId required" });
     }
 
-    // 1️⃣ Fetch registration
+    // Fetch registration
     const { data: registration, error: fetchError } = await supabase
       .from("business_registrations")
-      .select("business_id")
+      .select("id, business_id, status")
       .eq("id", registrationId)
       .single();
 
@@ -27,21 +29,24 @@ router.post("/approve-registration", async (req, res) => {
       return res.status(404).json({ error: "Registration not found" });
     }
 
-    // 2️⃣ Update registration status (NO fee check here)
+    console.log("📌 Registration found:", registration);
+
+    // Approve registration (NO fee validation)
     const { error: updateRegError } = await supabase
       .from("business_registrations")
       .update({
         status: "approved",
         rejection_reason: null,
-        reviewed_at: new Date()
+        reviewed_at: new Date().toISOString()
       })
       .eq("id", registrationId);
 
     if (updateRegError) {
+      console.error("❌ Registration update error:", updateRegError);
       return res.status(400).json({ error: updateRegError.message });
     }
 
-    // 3️⃣ Update business operational_status
+    // Set business operational_status to approved
     const { error: updateBusinessError } = await supabase
       .from("businesses")
       .update({
@@ -50,13 +55,19 @@ router.post("/approve-registration", async (req, res) => {
       .eq("id", registration.business_id);
 
     if (updateBusinessError) {
+      console.error("❌ Business update error:", updateBusinessError);
       return res.status(400).json({ error: updateBusinessError.message });
     }
 
-    return res.json({ ok: true });
+    console.log("✅ Registration approved successfully");
+
+    return res.json({
+      ok: true,
+      version: "ADMIN_ROUTE_V2_NO_FEE_CHECK"
+    });
 
   } catch (err) {
-    console.error(err);
+    console.error("🔥 Server error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
