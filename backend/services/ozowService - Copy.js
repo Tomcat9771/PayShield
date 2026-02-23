@@ -12,11 +12,6 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
   privateKey,
 }) {
   const inputString =
@@ -31,11 +26,6 @@ function generateHash({
     successUrl +
     notifyUrl +
     String(isTest) +
-    optional1 +
-    optional2 +
-    optional3 +
-    optional4 +
-    optional5 +
     privateKey;
 
   const stringToHash = inputString.toLowerCase();
@@ -51,11 +41,6 @@ export async function createOzowPayment({
   transactionReference,
   bankReference,
   customer = null,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
 }) {
   const siteCode = process.env.OZOW_SITE_CODE?.trim();
   const apiKey = process.env.OZOW_API_KEY?.trim();
@@ -98,11 +83,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
-    optional2,
-    optional3,
-    optional4,
-    optional5,
     privateKey,
   });
 
@@ -110,7 +90,7 @@ export async function createOzowPayment({
     siteCode,
     countryCode,
     currencyCode,
-    amount: amountForHash,
+    amount: amountForHash, // always 2 decimal string
     transactionReference,
     bankReference,
     cancelUrl,
@@ -118,14 +98,10 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
-    optional2,
-    optional3,
-    optional4,
-    optional5,
     hashCheck,
   };
 
+  // Staging vs Production endpoint
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
     : "https://api.ozow.com/PostPaymentRequest";
@@ -143,13 +119,14 @@ export async function createOzowPayment({
   const data = await response.json();
 
   if (!response.ok || data.errorMessage) {
-    console.error("Ozow raw response:", data);
-    throw new Error(
-      data.errorMessage ||
-      JSON.stringify(data) ||
-      "Ozow payment failed"
-    );
-  }
+  console.error("Ozow raw response:", data);
+  throw new Error(
+    data.errorMessage ||
+    JSON.stringify(data) ||
+    "Ozow payment failed"
+  );
+}
+
 
   return data;
 }

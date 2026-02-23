@@ -1,45 +1,67 @@
 import express from "express";
+import { supabase } from "../lib/supabaseClient.js";
 import { createOzowPayment } from "../services/ozowService.js";
 
 const router = express.Router();
 
 /**
- * POST /api/ozow/create
- * Creates Ozow payment request
- * Does NOT create transaction in DB
- * Webhook will handle transaction + ledger atomically
+ * POST /api/ozow/create-registration
+ * Creates Ozow payment request for registration fee
  */
-router.post("/create", async (req, res) => {
+router.post("/create-registration", async (req, res) => {
   try {
-    const { business_id, amount } = req.body;
+    const { business_id } = req.body;
 
-    if (!business_id || !amount) {
+    if (!business_id) {
       return res.status(400).json({
-        error: "business_id and amount are required",
+        error: "business_id is required",
       });
     }
 
-    const numericAmount = Number(amount);
+    // 1️⃣ Get registration fee from config
+    const { data: feeConfig, error: feeError } = await supabase
+      .from("platform_config")
+      .select("value")
+      .eq("key", "registration_fee")
+      .single();
 
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({
-        error: "Invalid amount",
+    if (feeError || !feeConfig) {
+      return res.status(500).json({
+        error: "Registration fee not configured",
       });
     }
 
-    // 🔑 IMPORTANT:
-    // transactionReference MUST equal business_id
+    const registrationFee = Number(feeConfig.value);
+
+    if (isNaN(registrationFee) || registrationFee <= 0) {
+      return res.status(500).json({
+        error: "Invalid registration fee configuration",
+      });
+    }
+
+    // 2️⃣ Create payment intent row
+    await supabase.from("payments").insert({
+      provider: "ozow",
+      provider_reference: `INIT-${business_id}-${Date.now()}`,
+      business_id,
+      purpose: "registration_fee",
+      amount: registrationFee,
+      provider_status: "INITIATED",
+      processed: false,
+    });
+
+    // 3️⃣ transactionReference MUST equal business_id
     const transactionReference = business_id;
 
-    // bankReference can be anything meaningful
-    const bankReference = `PS-${business_id.slice(0, 12)}`;
+    const bankReference = `PS-REG-${business_id.slice(0, 8)}`;
 
-
+    // 4️⃣ Create Ozow payment
     const ozowResponse = await createOzowPayment({
-      amount: numericAmount,
+      amount: registrationFee,
       transactionReference,
       bankReference,
       customer: business_id,
+      optional1: "registration_fee", // 🔥 important for webhook
     });
 
     return res.json({
@@ -48,7 +70,7 @@ router.post("/create", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Ozow create error:", err.message);
+    console.error("Ozow registration create error:", err.message);
     return res.status(500).json({
       error: err.message || "Ozow payment creation failed",
     });
@@ -56,3 +78,4 @@ router.post("/create", async (req, res) => {
 });
 
 export default router;
+
