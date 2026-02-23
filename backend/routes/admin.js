@@ -16,7 +16,7 @@ router.post("/approve-registration", async (req, res) => {
       return res.status(400).json({ error: "registrationId required" });
     }
 
-    // 1️⃣ Get registration
+    // 1️⃣ Fetch registration
     const { data: registration, error: fetchError } = await supabase
       .from("business_registrations")
       .select("business_id")
@@ -27,12 +27,13 @@ router.post("/approve-registration", async (req, res) => {
       return res.status(404).json({ error: "Registration not found" });
     }
 
-    // 2️⃣ Update registration status
+    // 2️⃣ Update registration status (NO fee check here)
     const { error: updateRegError } = await supabase
       .from("business_registrations")
       .update({
         status: "approved",
-        rejection_reason: null
+        rejection_reason: null,
+        reviewed_at: new Date()
       })
       .eq("id", registrationId);
 
@@ -61,4 +62,3 @@ router.post("/approve-registration", async (req, res) => {
 });
 
 export default router;
-

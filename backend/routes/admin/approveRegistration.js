@@ -1,71 +1,63 @@
 import express from "express";
-import { supabase } from "../../lib/supabaseClient.js";
-import { sendApprovalEmail } from "../../services/emailService.js";
+import { createClient } from "@supabase/supabase-js";
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+router.post("/approve-registration", async (req, res) => {
   try {
     const { registrationId } = req.body;
 
     if (!registrationId) {
-      return res.status(400).json({ error: "Missing registrationId" });
+      return res.status(400).json({ error: "registrationId required" });
     }
 
-    /* ======================================
-       GET REGISTRATION + BUSINESS
-    ====================================== */
-
-    const { data: registration, error: regError } = await supabase
+    // 1️⃣ Fetch registration
+    const { data: registration, error: fetchError } = await supabase
       .from("business_registrations")
-      .select(`
-        id,
-        business_id,
-        status,
-        businesses (
-          id,
-          business_name,
-          email
-        )
-      `)
+      .select("business_id")
       .eq("id", registrationId)
       .single();
 
-    if (regError || !registration) {
+    if (fetchError || !registration) {
       return res.status(404).json({ error: "Registration not found" });
     }
 
-    if (registration.status === "approved") {
-      return res.status(400).json({ error: "Already approved" });
-    }
-
-    /* ======================================
-       UPDATE STATUS
-    ====================================== */
-
-    const { error: updateError } = await supabase
+    // 2️⃣ Update registration status (NO fee check here)
+    const { error: updateRegError } = await supabase
       .from("business_registrations")
       .update({
         status: "approved",
-        reviewed_at: new Date(),
+        rejection_reason: null,
+        reviewed_at: new Date()
       })
       .eq("id", registrationId);
 
-    if (updateError) throw updateError;
+    if (updateRegError) {
+      return res.status(400).json({ error: updateRegError.message });
+    }
 
-    /* ======================================
-       SEND EMAIL
-    ====================================== */
+    // 3️⃣ Update business operational_status
+    const { error: updateBusinessError } = await supabase
+      .from("businesses")
+      .update({
+        operational_status: "approved"
+      })
+      .eq("id", registration.business_id);
 
-    const business = registration.businesses;
+    if (updateBusinessError) {
+      return res.status(400).json({ error: updateBusinessError.message });
+    }
 
-    await sendApprovalEmail(business.email, business.business_name);
-
-    return res.json({ success: true });
+    return res.json({ ok: true });
 
   } catch (err) {
-    console.error("Approval error:", err);
-    return res.status(500).json({ error: "Approval failed" });
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
