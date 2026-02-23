@@ -189,7 +189,47 @@ const { data, error } = await supabase
             <p>
               <strong>Business:</strong> {business?.business_name}
             </p>
+<strong>Registration Created:</strong> new Date(reg.created_at).toLocaleString()
 
+{/* =========================
+    CURRENT BUSINESS DETAILS
+========================= */}
+{business && (
+  <div
+    style={{
+      marginTop: 15,
+      padding: 15,
+      background: "#f4f6f8",
+      borderRadius: 8,
+    }}
+  >
+    <strong>Current Business Details</strong>
+
+    <div style={{ marginTop: 10 }}>
+      <div><strong>Business Type:</strong> {business.business_type}</div>
+      <div><strong>Email:</strong> {business.email}</div>
+      <div><strong>Phone:</strong> {business.phone}</div>
+      <div><strong>Registration Number:</strong> {business.registration_number}</div>
+      <div><strong>Operational Status:</strong> {business.operational_status}</div>
+
+      <div style={{ marginTop: 10 }}>
+        <strong>Physical Address</strong>
+        <div>{business.street_address}</div>
+        <div>{business.town}</div>
+        <div>{business.city}</div>
+        <div>{business.postal_code}</div>
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <strong>Postal Address</strong>
+        <div>{business.postal_street}</div>
+        <div>{business.postal_town}</div>
+        <div>{business.postal_city}</div>
+        <div>{business.postal_postal_code}</div>
+      </div>
+    </div>
+  </div>
+)}
             <p>
               <strong>Status:</strong> {reg.status}
             </p>
