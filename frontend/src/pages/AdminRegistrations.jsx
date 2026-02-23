@@ -13,47 +13,62 @@ export default function AdminRegistrations() {
   }, []);
 
   const fetchRegistrations = async () => {
-    const { data, error } = await supabase
-      .from("business_registrations")
-      .select(`
-        id,
-        status,
-        rejection_reason,
-        created_at,
-        businesses (
-          id,
-          businesses (
-  id,
-  business_name,
-  business_type,
-  registration_fee_paid,
-  business_directors (
+const { data, error } = await supabase
+  .from("business_registrations")
+  .select(`
     id,
-    director_name,
-    director_id_number
-  ),
-  business_history (
-            id,
-            old_data,
-            new_data,
-            changed_at
-          )
-        ),
-        business_documents (
-          id,
-          document_type,
-          verified
-        ),
-        registration_history (
-          id,
-          old_status,
-          new_status,
-          rejection_reason,
-          changed_by,
-          changed_at
-        )
-      `)
-      .order("created_at", { ascending: false });
+    status,
+    rejection_reason,
+    created_at,
+
+    businesses (
+      id,
+      business_name,
+      business_type,
+      registration_fee_paid,
+      operational_status,
+      email,
+      phone,
+      registration_number,
+      street_address,
+      town,
+      city,
+      postal_code,
+      postal_street,
+      postal_town,
+      postal_city,
+      postal_postal_code,
+
+      business_directors (
+        id,
+        director_name,
+        director_id_number
+      ),
+
+      business_history (
+        id,
+        old_data,
+        new_data,
+        changed_at
+      )
+    ),
+
+    business_documents (
+      id,
+      document_type,
+      verified
+    ),
+
+    registration_history (
+      id,
+      old_status,
+      new_status,
+      rejection_reason,
+      changed_by,
+      changed_at
+    )
+  `)
+  .order("created_at", { ascending: false });
 
     if (!error) {
       setRegistrations(data || []);
@@ -188,55 +203,8 @@ export default function AdminRegistrations() {
               <strong>Documents Verified:</strong>{" "}
               {verifiedDocs.length} / {required.length}
             </p>
-
-            {/* REGISTRATION HISTORY */}
-            {history.length > 0 && (
-              <div
-                style={{
-                  marginTop: 15,
-                  padding: 15,
-                  background: "#f8f9fa",
-                  borderRadius: 8,
-                }}
-              >
-                <strong>Registration History</strong>
-
-                {history.map((h) => (
-                  <div
-                    key={h.id}
-                    style={{
-                      marginTop: 10,
-                      padding: 10,
-                      background: "#ffffff",
-                      borderRadius: 6,
-                      border: "1px solid #eee",
-                    }}
-                  >
-                    <div>
-                      {h.old_status} → {h.new_status}
-                    </div>
-
-                    {h.rejection_reason && (
-                      <div style={{ color: "#c0392b", marginTop: 5 }}>
-                        Reason: {h.rejection_reason}
-                      </div>
-                    )}
-
-                    <div
-                      style={{
-                        fontSize: 12,
-                        marginTop: 5,
-                        opacity: 0.6,
-                      }}
-                    >
-                      {new Date(h.changed_at).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* =========================
+{
+/* =========================
     REGISTRATION HISTORY (FIRST)
 ========================= */}
 {history.length > 0 && (
