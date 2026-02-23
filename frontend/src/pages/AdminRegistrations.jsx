@@ -236,13 +236,14 @@ const { data, error } = await supabase
 )}
 
 {/* =========================
-    BUSINESS SNAPSHOT VIEW
+    BUSINESS DETAILS (OLD → NEW)
 ========================= */}
 {businessHistory.length > 0 && (
   <div style={{ marginTop: 20, padding: 15, background: "#eef3ff", borderRadius: 8 }}>
-    <strong>Business Details</strong>
+    <strong>Business Details (Previous → Updated)</strong>
 
     {businessHistory.map((entry) => {
+      const oldData = entry.old_data || {};
       const newData = entry.new_data || {};
 
       const orderedFields = [
@@ -265,12 +266,29 @@ const { data, error } = await supabase
       ];
 
       return (
-        <div key={entry.id} style={{ marginTop: 10 }}>
-          {orderedFields.map((field) => (
-            <div key={field} style={{ marginBottom: 6 }}>
-              <strong>{field}:</strong> {String(newData[field] ?? "")}
-            </div>
-          ))}
+        <div key={entry.id} style={{ marginTop: 15 }}>
+          {orderedFields.map((field) => {
+            const oldVal = oldData[field] ?? "";
+            const newVal = newData[field] ?? "";
+            const changed = String(oldVal) !== String(newVal);
+
+            return (
+              <div key={field} style={{ marginBottom: 6 }}>
+                <strong>{field}:</strong>{" "}
+                <span style={{ color: changed ? "#c0392b" : "#555" }}>
+                  {String(oldVal)}
+                </span>{" "}
+                →{" "}
+                <span style={{ color: changed ? "#27ae60" : "#555" }}>
+                  {String(newVal)}
+                </span>
+              </div>
+            );
+          })}
+
+          <div style={{ fontSize: 12, marginTop: 8, opacity: 0.6 }}>
+            Updated At: {new Date(entry.changed_at).toLocaleString()}
+          </div>
         </div>
       );
     })}
