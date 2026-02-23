@@ -13,70 +13,78 @@ export default function AdminRegistrations() {
   }, []);
 
   const fetchRegistrations = async () => {
-const { data, error } = await supabase
-  .from("business_registrations")
-  .select(`
-    id,
-    status,
-    rejection_reason,
-    created_at,
-
-    businesses (
+  const { data, error } = await supabase
+    .from("business_registrations")
+    .select(`
       id,
-      business_name,
-      business_type,
-      registration_fee_paid,
-      operational_status,
-      email,
-      phone,
-      registration_number,
-      street_address,
-      town,
-      city,
-      postal_code,
-      postal_street,
-      postal_town,
-      postal_city,
-      postal_postal_code,
+      status,
+      rejection_reason,
+      created_at,
+      fee_paid,
 
-      business_directors (
-  id,
-  director_name,
-  director_id_number,
-  verified
-),
-
-      business_history (
+      businesses (
         id,
-        old_data,
-        new_data,
+        business_name,
+        business_type,
+        registration_fee_paid,
+        operational_status,
+        email,
+        phone,
+        registration_number,
+        street_address,
+        town,
+        city,
+        postal_code,
+        postal_street,
+        postal_town,
+        postal_city,
+        postal_postal_code,
+
+        business_directors (
+          id,
+          director_name,
+          director_id_number,
+          id_file_url,
+          verified,
+          verified_at
+        ),
+
+        business_history (
+          id,
+          old_data,
+          new_data,
+          changed_at
+        )
+      ),
+
+      business_documents (
+        id,
+        document_type,
+        file_url,
+        verified,
+        created_at
+      ),
+
+      registration_history (
+        id,
+        old_status,
+        new_status,
+        rejection_reason,
+        changed_by,
         changed_at
       )
-    ),
+    `)
+    .order("created_at", { ascending: false });
 
-    business_documents (
-      id,
-      document_type,
-      verified
-    ),
+  if (!error) {
+    setRegistrations(data || []);
+  } else {
+    console.error("Fetch error:", error);
+  }
 
-    registration_history (
-      id,
-      old_status,
-      new_status,
-      rejection_reason,
-      changed_by,
-      changed_at
-    )
-  `)
-  .order("created_at", { ascending: false });
+  setLoading(false);
+};
 
-    if (!error) {
-      setRegistrations(data || []);
-    }
-
-    setLoading(false);
-  };
 
   const approveRegistration = async (registrationId) => {
     try {
