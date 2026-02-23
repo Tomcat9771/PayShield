@@ -140,13 +140,13 @@ const { data, error } = await supabase
         const docs = reg.business_documents || [];
 
         const requiredDocs = {
-          Company: [
-            "cipc",
-            "proof_of_address",
-            "proof_of_bank",
-            "director_ids",
-            "appointment_letter",
-          ],
+  Company: [
+    "cipc",
+    "proof_of_address",
+    "proof_of_bank",
+    "appointment_letter",
+  ],
+};
           "Sole Proprietor": [
             "id",
             "proof_of_address",
@@ -159,6 +159,17 @@ const { data, error } = await supabase
         const verifiedDocs = docs
           .filter((d) => d.verified)
           .map((d) => d.document_type);
+
+const directorCount = business?.business_directors?.length || 0;
+
+const allDirectorsHaveIds =
+  directorCount > 0 &&
+  business.business_directors.every(d => d.id_file_url);
+
+const canApprove =
+  reg.status === "pending" &&
+  allDocsVerified &&
+  allDirectorsHaveIds;
 
         const allDocsVerified =
           required.length > 0 &&

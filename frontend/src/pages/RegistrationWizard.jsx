@@ -361,6 +361,7 @@ if (hasChanges) {
    INSERT DIRECTORS
 ========================= */
 if (form.business_type === "Company") {
+
   // Only delete existing directors in edit mode
   if (isEditMode) {
     const { error: deleteError } = await supabase
@@ -374,6 +375,7 @@ if (form.business_type === "Company") {
   for (const director of directors) {
     let filePath = director.existing_file_url || null;
 
+    // Upload new ID file if provided
     if (director.id_file) {
       filePath = `${currentBusinessId}/directors/${Date.now()}-${director.director_id_number}`;
 
@@ -390,23 +392,14 @@ if (form.business_type === "Company") {
         business_id: currentBusinessId,
         director_name: director.director_name,
         director_id_number: director.director_id_number,
-        id_file_url: filePath
+        id_file_url: filePath,
+        verified: false,        // 👈 NEW
+        verified_at: null       // 👈 OPTIONAL but clean
       });
 
     if (insertError) throw insertError;
   }
 }
-      navigate("/dashboard");
-
-    } 
-catch (err) {
-  console.error(err);
-  setErrorBottom("Something went wrong. Please try again.");
-} 
-    finally {
-      setLoading(false);
-    }
-  };
 
   /* =========================
      UI

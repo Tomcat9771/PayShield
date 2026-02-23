@@ -43,13 +43,32 @@ export default function AdminDocumentReview() {
   };
 
   /* =========================
-     VIEW DOCUMENT (SIGNED URL DIRECT)
+     REQUIRED DOCUMENTS LOGIC
   ========================= */
+
+  const requiredDocsMap = {
+    Company: [
+      "cipc",
+      "proof_of_address",
+      "proof_of_bank",
+      "appointment_letter",
+    ],
+    "Sole Proprietor": [
+      "id",
+      "proof_of_address",
+      "proof_of_bank",
+    ],
+  };
+
+  /* =========================
+     VIEW DOCUMENT
+  ========================= */
+
   const viewDocument = async (filePath) => {
     try {
       const { data, error } = await supabase.storage
         .from("business-documents")
-        .createSignedUrl(filePath, 60); // 60 sec access
+        .createSignedUrl(filePath, 60);
 
       if (error) {
         console.error("Signed URL error:", error);
@@ -68,6 +87,7 @@ export default function AdminDocumentReview() {
   /* =========================
      VERIFY DOCUMENT
   ========================= */
+
   const verifyDocument = async (docId) => {
     const { error } = await supabase
       .from("business_documents")
@@ -85,6 +105,7 @@ export default function AdminDocumentReview() {
   /* =========================
      REJECT DOCUMENT
   ========================= */
+
   const rejectDocument = async (docId) => {
     const { error } = await supabase
       .from("business_documents")
@@ -114,9 +135,22 @@ export default function AdminDocumentReview() {
 
       {registrations.map(reg => {
 
-        const totalDocs = reg.business_documents?.length || 0;
-        const verifiedDocs =
-          reg.business_documents?.filter(d => d.verified).length || 0;
+        const businessType = reg.businesses?.business_type;
+        const requiredDocs = requiredDocsMap[businessType] || [];
+
+        const uploadedDocs = reg.business_documents || [];
+
+        const verifiedTypes = uploadedDocs
+          .filter(d => d.verified)
+          .map(d => d.document_type);
+
+        const verifiedRequiredCount = requiredDocs.filter(r =>
+          verifiedTypes.includes(r)
+        ).length;
+
+        const allRequiredVerified =
+          requiredDocs.length > 0 &&
+          requiredDocs.every(r => verifiedTypes.includes(r));
 
         return (
           <div
@@ -130,15 +164,24 @@ export default function AdminDocumentReview() {
             }}
           >
             <h3>{reg.businesses?.business_name}</h3>
-            <p><strong>Type:</strong> {reg.businesses?.business_type}</p>
+            <p><strong>Type:</strong> {businessType}</p>
             <p><strong>Status:</strong> {reg.status}</p>
 
             <p>
               <strong>Documents Verified:</strong>{" "}
-              {verifiedDocs} / {totalDocs}
+              {verifiedRequiredCount} / {requiredDocs.length}
             </p>
 
-            {reg.business_documents?.map(doc => (
+            {!allRequiredVerified && (
+              <p style={{ color: "#c0392b", fontSize: 13 }}>
+                Missing required documents:{" "}
+                {requiredDocs
+                  .filter(r => !verifiedTypes.includes(r))
+                  .join(", ")}
+              </p>
+            )}
+
+            {uploadedDocs.map(doc => (
               <div
                 key={doc.id}
                 style={{
@@ -161,9 +204,7 @@ export default function AdminDocumentReview() {
                 </p>
 
                 <div style={{ marginTop: 10 }}>
-                  <GoldButton
-                    onClick={() => viewDocument(doc.file_url)}
-                  >
+                  <GoldButton onClick={() => viewDocument(doc.file_url)}>
                     View
                   </GoldButton>
 
