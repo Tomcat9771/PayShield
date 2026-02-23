@@ -206,8 +206,78 @@ return (
           <p>
             <strong>Business:</strong> {business?.business_name}
           </p>
+{/* ================= BUSINESS DETAILS ================= */}
 
-          <p>
+<p><strong>Business Type:</strong> {business?.business_type}</p>
+
+<p><strong>Registration Number:</strong> {business?.registration_number || "N/A"}</p>
+
+<p><strong>Email:</strong> {business?.email}</p>
+
+<p><strong>Phone:</strong> {business?.phone}</p>
+
+<hr style={{ margin: "15px 0" }} />
+
+<p><strong>Physical Address:</strong></p>
+<p>
+  {business?.street_address}<br />
+  {business?.town}<br />
+  {business?.city}<br />
+  {business?.postal_code}
+</p>
+
+<p><strong>Postal Address:</strong></p>
+<p>
+  {business?.postal_street}<br />
+  {business?.postal_town}<br />
+  {business?.postal_city}<br />
+  {business?.postal_postal_code}
+</p>
+
+{/* ================= DIRECTORS ================= */}
+
+{business?.business_type === "Company" && (
+  <>
+    <hr style={{ margin: "15px 0" }} />
+    <h4>Directors</h4>
+
+    {business.business_directors?.map((director) => (
+      <div
+        key={director.id}
+        style={{
+          border: "1px solid #eee",
+          padding: "10px",
+          marginBottom: "10px",
+          borderRadius: "6px",
+          background: "#fafafa"
+        }}
+      >
+        <p><strong>Name:</strong> {director.director_name}</p>
+        <p><strong>ID:</strong> {director.director_id_number}</p>
+        <p>
+          <strong>Verified:</strong>{" "}
+          {director.verified ? "Yes" : "No"}
+        </p>
+      </div>
+    ))}
+  </>
+)}
+  
+{/* ================= DOCUMENTS ================= */}
+
+<hr style={{ margin: "15px 0" }} />
+<h4>Documents</h4>
+
+{docs.map((doc) => (
+  <div key={doc.id} style={{ marginBottom: "8px" }}>
+    <p>
+      <strong>{doc.document_type}</strong> —{" "}
+      {doc.verified ? "Verified" : "Pending"}
+    </p>
+  </div>
+))}
+
+        <p>
             <strong>Registration Created:</strong>{" "}
             {new Date(reg.created_at).toLocaleString()}
           </p>
