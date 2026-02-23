@@ -40,10 +40,11 @@ const { data, error } = await supabase
       postal_postal_code,
 
       business_directors (
-        id,
-        director_name,
-        director_id_number
-      ),
+  id,
+  director_name,
+  director_id_number,
+  verified
+),
 
       business_history (
         id,
@@ -139,44 +140,41 @@ const { data, error } = await supabase
         const business = reg.businesses;
         const docs = reg.business_documents || [];
 
-        const requiredDocs = {
+const requiredDocs = {
   Company: [
     "cipc",
     "proof_of_address",
     "proof_of_bank",
     "appointment_letter",
   ],
+  "Sole Proprietor": [
+    "id",
+    "proof_of_address",
+    "proof_of_bank",
+  ],
 };
-          "Sole Proprietor": [
-            "id",
-            "proof_of_address",
-            "proof_of_bank",
-          ],
-        };
 
-        const required = requiredDocs[business?.business_type] || [];
+const required = requiredDocs[business?.business_type] || [];
 
-        const verifiedDocs = docs
-          .filter((d) => d.verified)
-          .map((d) => d.document_type);
+const verifiedDocs = docs
+  .filter((d) => d.verified)
+  .map((d) => d.document_type);
 
-const directorCount = business?.business_directors?.length || 0;
+const allDocsVerified =
+  required.length > 0 &&
+  required.every((r) => verifiedDocs.includes(r));
 
-const allDirectorsHaveIds =
-  directorCount > 0 &&
-  business.business_directors.every(d => d.id_file_url);
+const allDirectorsVerified =
+  business?.business_type !== "Company" ||
+  (
+    business.business_directors?.length > 0 &&
+    business.business_directors.every(d => d.verified)
+  );
 
 const canApprove =
   reg.status === "pending" &&
   allDocsVerified &&
-  allDirectorsHaveIds;
-
-        const allDocsVerified =
-          required.length > 0 &&
-          required.every((r) => verifiedDocs.includes(r));
-
-        const canApprove =
-          reg.status === "pending" && allDocsVerified;
+  allDirectorsVerified;
 
         const history = (reg.registration_history || []).sort(
           (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
@@ -200,7 +198,10 @@ const canApprove =
             <p>
               <strong>Business:</strong> {business?.business_name}
             </p>
-<strong>Registration Created:</strong> new Date(reg.created_at).toLocaleString()
+<p>
+  <strong>Registration Created:</strong>{" "}
+  {new Date(reg.created_at).toLocaleString()}
+</p>
 
 {/* =========================
     CURRENT BUSINESS DETAILS

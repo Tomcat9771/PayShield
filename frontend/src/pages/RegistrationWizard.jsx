@@ -400,6 +400,15 @@ if (form.business_type === "Company") {
     if (insertError) throw insertError;
   }
 }
+ navigate("/dashboard");
+
+    } catch (err) {
+      console.error(err);
+      setErrorBottom("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* =========================
      UI
