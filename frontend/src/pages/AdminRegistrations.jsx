@@ -145,6 +145,7 @@ export default function AdminRegistrations() {
       </GoldButton>
 
       {registrations.map((reg) => {
+console.log(reg);
         const business = reg.businesses;
         const docs = reg.business_documents || [];
 
@@ -382,32 +383,59 @@ const canApprove =
 )}
 
             {/* ACTION BUTTONS */}
-            <div style={{ marginTop: 15 }}>
-              {canApprove ? (
-                <GoldButton
-                  onClick={() => approveRegistration(reg.id)}
-                >
-                  Approve
-                </GoldButton>
-              ) : (
-                <GoldButton disabled>
-                  Approval Requirements Not Met
-                </GoldButton>
-              )}
+<div style={{ marginTop: 15 }}>
 
-              {reg.status === "pending" && (
-                <GoldButton
-                  style={{
-                    marginLeft: 10,
-                    backgroundColor: "#c0392b",
-                    color: "white",
-                  }}
-                  onClick={() => rejectRegistration(reg.id)}
-                >
-                  Reject
-                </GoldButton>
-              )}
-            </div>
+  {/* PENDING – Admin Can Act */}
+  {reg.status === "pending" && (
+    <>
+      {canApprove ? (
+        <GoldButton
+          onClick={() => approveRegistration(reg.id)}
+        >
+          Approve
+        </GoldButton>
+      ) : (
+        <GoldButton disabled>
+          Approval Requirements Not Met
+        </GoldButton>
+      )}
+
+      <GoldButton
+        style={{
+          marginLeft: 10,
+          backgroundColor: "#c0392b",
+          color: "white",
+        }}
+        onClick={() => rejectRegistration(reg.id)}
+      >
+        Reject
+      </GoldButton>
+    </>
+  )}
+
+  {/* DOCUMENTS APPROVED – Awaiting Payment */}
+  {reg.status === "approved" &&
+    reg.operational_status === "verified" && (
+      <GoldButton disabled style={{ backgroundColor: "#f39c12", color: "white" }}>
+        Documents Approved – Awaiting Payment
+      </GoldButton>
+  )}
+
+  {/* BUSINESS ACTIVE */}
+  {reg.operational_status === "active" && (
+    <GoldButton disabled style={{ backgroundColor: "#27ae60", color: "white" }}>
+      Business Active
+    </GoldButton>
+  )}
+
+  {/* REJECTED */}
+  {reg.status === "rejected" && (
+    <GoldButton disabled style={{ backgroundColor: "#7f8c8d", color: "white" }}>
+      Registration Rejected
+    </GoldButton>
+  )}
+
+</div>
           </div>
         );
       })}
