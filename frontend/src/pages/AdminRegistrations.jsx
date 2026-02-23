@@ -22,10 +22,17 @@ export default function AdminRegistrations() {
         created_at,
         businesses (
           id,
-          business_name,
-          business_type,
-          registration_fee_paid,
-          business_history (
+          businesses (
+  id,
+  business_name,
+  business_type,
+  registration_fee_paid,
+  business_directors (
+    id,
+    director_name,
+    director_id_number
+  ),
+  business_history (
             id,
             old_data,
             new_data,
@@ -229,81 +236,104 @@ export default function AdminRegistrations() {
               </div>
             )}
 
-            {/* BUSINESS CHANGE HISTORY (SHOW ALL FIELDS) */}
-            {businessHistory.length > 0 && (
-              <div
-                style={{
-                  marginTop: 20,
-                  padding: 15,
-                  background: "#eef3ff",
-                  borderRadius: 8,
-                }}
-              >
-                <strong>Business Changes</strong>
+            {/* =========================
+    REGISTRATION HISTORY (FIRST)
+========================= */}
+{history.length > 0 && (
+  <div style={{ marginTop: 15, padding: 15, background: "#f8f9fa", borderRadius: 8 }}>
+    <strong>Registration History</strong>
 
-                {businessHistory.map((entry) => {
-                  const oldData = entry.old_data || {};
-                  const newData = entry.new_data || {};
+    {history.map((h) => (
+      <div key={h.id} style={{ marginTop: 10 }}>
+        <div>
+          {h.old_status} → {h.new_status}
+        </div>
 
-                  const allFields = Array.from(
-                    new Set([
-                      ...Object.keys(oldData),
-                      ...Object.keys(newData),
-                    ])
-                  );
+        {h.rejection_reason && (
+          <div style={{ color: "#c0392b", marginTop: 5 }}>
+            Rejection Reason: {h.rejection_reason}
+          </div>
+        )}
 
-                  return (
-                    <div
-                      key={entry.id}
-                      style={{
-                        marginTop: 10,
-                        padding: 10,
-                        background: "#ffffff",
-                        borderRadius: 6,
-                        border: "1px solid #ddd",
-                      }}
-                    >
-                      {allFields.map((field) => {
-                        const oldVal = oldData[field] ?? "";
-                        const newVal = newData[field] ?? "";
-                        const changed = oldVal !== newVal;
+        <div style={{ fontSize: 12, opacity: 0.6 }}>
+          Changed By: {h.changed_by}
+        </div>
 
-                        return (
-                          <div key={field} style={{ marginBottom: 5 }}>
-                            <strong>{field}</strong>:{" "}
-                            <span
-                              style={{
-                                color: changed ? "#c0392b" : "#555",
-                              }}
-                            >
-                              {String(oldVal)}
-                            </span>{" "}
-                            →{" "}
-                            <span
-                              style={{
-                                color: changed ? "#27ae60" : "#555",
-                              }}
-                            >
-                              {String(newVal)}
-                            </span>
-                          </div>
-                        );
-                      })}
+        <div style={{ fontSize: 12, opacity: 0.6 }}>
+          Updated At: {new Date(h.changed_at).toLocaleString()}
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
-                      <div
-                        style={{
-                          fontSize: 12,
-                          marginTop: 5,
-                          opacity: 0.6,
-                        }}
-                      >
-                        {new Date(entry.changed_at).toLocaleString()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+{/* =========================
+    BUSINESS SNAPSHOT VIEW
+========================= */}
+{businessHistory.length > 0 && (
+  <div style={{ marginTop: 20, padding: 15, background: "#eef3ff", borderRadius: 8 }}>
+    <strong>Business Details</strong>
+
+    {businessHistory.map((entry) => {
+      const newData = entry.new_data || {};
+
+      const orderedFields = [
+        "business_type",
+        "business_name",
+        "owner_name",
+        "phone",
+        "registration_number",
+        "street_address",
+        "town",
+        "city",
+        "postal_code",
+        "postal_street",
+        "postal_town",
+        "postal_city",
+        "postal_postal_code",
+        "email",
+        "operational_status",
+        "registration_fee_paid"
+      ];
+
+      return (
+        <div key={entry.id} style={{ marginTop: 10 }}>
+          {orderedFields.map((field) => (
+            <div key={field} style={{ marginBottom: 6 }}>
+              <strong>{field}:</strong> {String(newData[field] ?? "")}
+            </div>
+          ))}
+        </div>
+      );
+    })}
+  </div>
+)}
+
+{/* =========================
+    SUPPORTING DOCUMENTS
+========================= */}
+<div style={{ marginTop: 20 }}>
+  <strong>Supporting Documents Submitted</strong>
+  {docs.map((doc) => (
+    <div key={doc.id} style={{ marginTop: 5 }}>
+      {doc.document_type} – {doc.verified ? "Verified" : "Pending"}
+    </div>
+  ))}
+</div>
+{/* =========================
+    DIRECTORS (IF COMPANY)
+========================= */}
+{business?.business_type === "Company" && (
+  <div style={{ marginTop: 20 }}>
+    <strong>Directors</strong>
+
+    {(business.business_directors || []).map((d) => (
+      <div key={d.id} style={{ marginTop: 5 }}>
+        {d.director_name} – {d.director_id_number}
+      </div>
+    ))}
+  </div>
+)}
 
             {/* ACTION BUTTONS */}
             <div style={{ marginTop: 15 }}>
