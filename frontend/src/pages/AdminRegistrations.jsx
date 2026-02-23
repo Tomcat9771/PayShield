@@ -144,24 +144,35 @@ export default function AdminRegistrations() {
         ← Back to Dashboard
       </GoldButton>
 
-      {registrations.map((reg) => {
-console.log(reg);
-        const business = reg.businesses;
-        const docs = reg.business_documents || [];
+{registrations.map((reg) => {
+  // DEBUG LOGS
+  console.log("FULL REG OBJECT:", reg);
+  console.log("STATUS:", reg.status);
+  console.log("OP STATUS:", reg.business?.operational_status);
 
-const requiredDocs = {
-  Company: [
-    "cipc",
-    "proof_of_address",
-    "proof_of_bank",
-    "appointment_letter",
-  ],
-  "Sole Proprietor": [
-    "id",
-    "proof_of_address",
-    "proof_of_bank",
-  ],
-};
+  const business = reg.business || reg.businesses || {};
+  const docs = reg.business_documents || [];
+
+  const requiredDocs = {
+    Company: [
+      "cipc",
+      "proof_of_address",
+      "proof_of_bank",
+      "appointment_letter",
+    ],
+    "Sole Proprietor": [
+      "id",
+      "proof_of_address",
+      "proof_of_bank",
+    ],
+  };
+
+  return (
+    <div key={reg.id}>
+      {/* Your existing JSX content continues here */}
+    </div>
+  );
+})}
 
 const required = requiredDocs[business?.business_type] || [];
 
