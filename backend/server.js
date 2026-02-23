@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
 import approveRegistrationRouter from "./routes/admin/approveRegistration.js";
-
+import adminRouter from "./routes/admin.js";
 
 
 /* =========================
@@ -86,7 +86,7 @@ app.use(
   requireAdmin,
   adminDocumentsRouter
 );
-
+app.use("/api/admin", adminRouter);
 
 /* =========================
    OZOW REDIRECT PAGES
