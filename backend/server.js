@@ -2,7 +2,6 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
-import approveRegistrationRouter from "./routes/admin/approveRegistration.js";
 import adminRouter from "./routes/admin.js";
 
 
@@ -48,7 +47,6 @@ app.use(
     credentials: true,
   })
 );
-app.use("/api/admin/approve-registration", approveRegistrationRouter);
 app.use("/api/admin/documents", adminDocumentsRouter);
 /* =========================
    OZOW WEBHOOK (RAW BODY REQUIRED)
