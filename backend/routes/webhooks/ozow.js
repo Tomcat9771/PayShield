@@ -99,7 +99,23 @@ router.post("/", async (req, res) => {
 
     const referenceId = TransactionReference;
     const gross = Number(Amount);
-    const purpose = Optional1 || "qr_payment";
+    let purpose = "qr_payment";
+
+// Check if this business has an approved registration awaiting payment
+const { data: registration } = await supabase
+  .from("business_registrations")
+  .select("id, status, fee_paid")
+  .eq("business_id", referenceId)
+  .eq("status", "approved")
+  .eq("fee_paid", false)
+  .maybeSingle();
+
+if (registration) {
+  purpose = "registration_fee";
+}
+
+console.log("Derived purpose:", purpose);
+
 
     console.log("Derived purpose:", purpose);
 
