@@ -1,5 +1,9 @@
 import crypto from "crypto";
 
+/**
+ * Generate Ozow SHA512 hash
+ * Order MUST match Ozow specification exactly
+ */
 function generateHash({
   siteCode,
   countryCode,
@@ -12,6 +16,11 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
+  optional1 = "",
+  optional2 = "",
+  optional3 = "",
+  optional4 = "",
+  optional5 = "",
   privateKey,
 }) {
   const inputString =
@@ -26,11 +35,18 @@ function generateHash({
     successUrl +
     notifyUrl +
     String(isTest) +
+    optional1 +
+    optional2 +
+    optional3 +
+    optional4 +
+    optional5 +
     privateKey;
+
+  const lower = inputString.toLowerCase();
 
   return crypto
     .createHash("sha512")
-    .update(inputString.toLowerCase())
+    .update(lower)
     .digest("hex");
 }
 
@@ -60,7 +76,14 @@ export async function createOzowPayment({
     throw new Error("Ozow redirect URLs not configured");
   }
 
-  const formattedAmount = Number(amount).toFixed(2);
+  const numericAmount = Number(amount);
+  if (isNaN(numericAmount)) {
+    throw new Error("Invalid amount supplied to Ozow");
+  }
+
+  const formattedAmount = numericAmount.toFixed(2);
+
+  const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
     siteCode,
@@ -74,6 +97,7 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
+    optional1,
     privateKey,
   });
 
@@ -89,9 +113,12 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1: "registration_fee", // include in payload only
+    optional1,
     hashCheck,
   };
+
+console.log("HASH STRING:", inputString.toLowerCase());
+console.log("HASH RESULT:", crypto.createHash("sha512").update(inputString.toLowerCase()).digest("hex"));
 
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
