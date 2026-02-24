@@ -1,8 +1,5 @@
 import crypto from "crypto";
 
-/**
- * Generate Ozow SHA512 hash
- */
 function generateHash({
   siteCode,
   countryCode,
@@ -15,11 +12,6 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
   privateKey,
 }) {
   const inputString =
@@ -34,11 +26,6 @@ function generateHash({
     successUrl +
     notifyUrl +
     String(isTest) +
-    optional1 +
-    optional2 +
-    optional3 +
-    optional4 +
-    optional5 +
     privateKey;
 
   return crypto
@@ -73,15 +60,7 @@ export async function createOzowPayment({
     throw new Error("Ozow redirect URLs not configured");
   }
 
-  const numericAmount = Number(amount);
-  if (isNaN(numericAmount)) {
-    throw new Error("Invalid amount supplied to Ozow");
-  }
-
-  const formattedAmount = numericAmount.toFixed(2);
-
-  // 🔥 REQUIRED for registration detection
-  const optional1 = "registration_fee";
+  const formattedAmount = Number(amount).toFixed(2);
 
   const hashCheck = generateHash({
     siteCode,
@@ -95,7 +74,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
     privateKey,
   });
 
@@ -111,7 +89,7 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
+    optional1: "registration_fee", // include in payload only
     hashCheck,
   };
 
@@ -133,11 +111,7 @@ export async function createOzowPayment({
 
   if (!response.ok || data.errorMessage) {
     console.error("Ozow raw response:", data);
-    throw new Error(
-      data.errorMessage ||
-      JSON.stringify(data) ||
-      "Ozow payment failed"
-    );
+    throw new Error(data.errorMessage || "Ozow payment failed");
   }
 
   return data;
