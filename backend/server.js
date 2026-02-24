@@ -25,30 +25,29 @@ import requireAuth, { requireAdmin } from "./middleware/auth.js";
 /* =========================
    CORS
 ========================= */
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
 app.use(
   cors({
     origin: function (origin, callback) {
-  if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true);
 
-  if (
-    origin.includes("vercel.app") ||
-    origin.includes("localhost")
-  ) {
-    return callback(null, true);
-  }
+      const allowed = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://payshield.shieldsconsulting.co.za",
+        "https://pay-shield-green.vercel.app",
+      ];
 
-  console.log("❌ Blocked by CORS:", origin);
-  callback(new Error("Not allowed by CORS"));
-},
+      if (allowed.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("❌ Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
+
 app.use("/api/admin/documents", adminDocumentsRouter);
 /* =========================
    OZOW WEBHOOK (RAW BODY REQUIRED)
