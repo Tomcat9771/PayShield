@@ -25,13 +25,15 @@ export default function Register() {
     setError("");
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/email-confirmed`
-        }
-      });
+      const { data, error } = await supabase.auth.signUp({
+  email: form.email,
+  password: form.password,
+  options: {
+    emailRedirectTo: `${window.location.origin}/email-confirmed`
+  }
+});
+
+console.log("SIGNUP RESPONSE:", data);
 
       if (error) throw error;
 
