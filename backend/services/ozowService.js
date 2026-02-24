@@ -32,11 +32,7 @@ function generateHash({
 
   inputString += privateKey;
 
-  console.log("----- OZOW HASH STRING -----");
-  console.log(inputString);
-  console.log("----- LOWERCASED -----");
-  console.log(inputString.toLowerCase());
-
+  
   return crypto
     .createHash("sha512")
     .update(inputString.toLowerCase())
@@ -65,13 +61,7 @@ export async function createOzowPayment({
   const successUrl = process.env.OZOW_SUCCESS_URL?.trim();
   const notifyUrl = process.env.OZOW_NOTIFY_URL?.trim();
 
-  console.log("----- OZOW URL VALUES -----");
-  console.log("cancelUrl:", cancelUrl);
-  console.log("errorUrl:", errorUrl);
-  console.log("successUrl:", successUrl);
-  console.log("notifyUrl:", notifyUrl);
-  console.log("isTest:", isTest);
-
+  
   if (!cancelUrl || !errorUrl || !successUrl || !notifyUrl) {
     throw new Error("Ozow redirect URLs not configured");
   }
@@ -131,8 +121,7 @@ export async function createOzowPayment({
   const data = await response.json();
 
   if (!response.ok || data.errorMessage) {
-    console.error("Ozow raw response:", data);
-    throw new Error(data.errorMessage || "Ozow payment failed");
+      throw new Error(data.errorMessage || "Ozow payment failed");
   }
 
   return data;
