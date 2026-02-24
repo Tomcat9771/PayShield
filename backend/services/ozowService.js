@@ -91,19 +91,20 @@ export async function createOzowPayment({
   });
 
   const payload = {
-    siteCode,
-    countryCode,
-    currencyCode,
-    amount: formattedAmount,
-    transactionReference,
-    bankReference,
-    cancelUrl,
-    errorUrl,
-    successUrl,
-    notifyUrl,
-    isTest,
-    hashCheck,
-  };
+  siteCode,
+  countryCode,
+  currencyCode,
+  amount: formattedAmount,
+  transactionReference,
+  bankReference,
+  cancelUrl,
+  errorUrl,
+  successUrl,
+  notifyUrl,
+  isTest,
+  optional1: "registration_fee", // 🔥 ADD THIS BACK
+  hashCheck,
+};
 
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
