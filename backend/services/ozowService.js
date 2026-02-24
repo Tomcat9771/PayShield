@@ -1,10 +1,14 @@
 import crypto from "crypto";
 
+/**
+ * Generate Ozow SHA512 hash
+ * Order MUST match Ozow specification exactly
+ */
 function generateHash({
   siteCode,
   countryCode,
   currencyCode,
-  amountForHash,
+  amount,
   transactionReference,
   bankReference,
   cancelUrl,
@@ -12,18 +16,13 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
   privateKey,
 }) {
   const inputString =
     siteCode +
     countryCode +
     currencyCode +
-    amountForHash +
+    amount +
     transactionReference +
     bankReference +
     cancelUrl +
@@ -31,18 +30,11 @@ function generateHash({
     successUrl +
     notifyUrl +
     String(isTest) +
-    optional1 +
-    optional2 +
-    optional3 +
-    optional4 +
-    optional5 +
     privateKey;
-
-  const stringToHash = inputString.toLowerCase();
 
   return crypto
     .createHash("sha512")
-    .update(stringToHash)
+    .update(inputString.toLowerCase())
     .digest("hex");
 }
 
@@ -51,11 +43,6 @@ export async function createOzowPayment({
   transactionReference,
   bankReference,
   customer = null,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
 }) {
   const siteCode = process.env.OZOW_SITE_CODE?.trim();
   const apiKey = process.env.OZOW_API_KEY?.trim();
@@ -68,6 +55,7 @@ export async function createOzowPayment({
   const countryCode = "ZA";
   const currencyCode = "ZAR";
 
+  // IMPORTANT: Must be boolean true/false
   const isTest = process.env.OZOW_IS_TEST === "true";
 
   const cancelUrl = process.env.OZOW_CANCEL_URL?.trim();
@@ -84,13 +72,14 @@ export async function createOzowPayment({
     throw new Error("Invalid amount supplied to Ozow");
   }
 
-  const amountForHash = numericAmount.toFixed(2);
+  // Must always be 2 decimal places as string
+  const formattedAmount = numericAmount.toFixed(2);
 
   const hashCheck = generateHash({
     siteCode,
     countryCode,
     currencyCode,
-    amountForHash,
+    amount: formattedAmount,
     transactionReference,
     bankReference,
     cancelUrl,
@@ -98,11 +87,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
-    optional2,
-    optional3,
-    optional4,
-    optional5,
     privateKey,
   });
 
@@ -110,7 +94,7 @@ export async function createOzowPayment({
     siteCode,
     countryCode,
     currencyCode,
-    amount: amountForHash,
+    amount: formattedAmount,
     transactionReference,
     bankReference,
     cancelUrl,
@@ -118,11 +102,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
-    optional2,
-    optional3,
-    optional4,
-    optional5,
     hashCheck,
   };
 
