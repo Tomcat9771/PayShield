@@ -51,6 +51,11 @@ router.post("/", async (req, res) => {
       Hash = "",
     } = payload;
 
+    console.log("Webhook Status:", Status);
+    console.log("Webhook Optional1:", Optional1);
+    console.log("Webhook TransactionReference:", TransactionReference);
+    console.log("Webhook Amount:", Amount);
+
     const hashString = (
       SiteCode +
       TransactionId +
@@ -96,6 +101,8 @@ router.post("/", async (req, res) => {
     const gross = Number(Amount);
     const purpose = Optional1 || "qr_payment";
 
+    console.log("Derived purpose:", purpose);
+
     if (!referenceId || !TransactionId || isNaN(gross)) {
       console.error("Invalid required fields");
       return res.status(200).send("Ignored");
@@ -123,6 +130,8 @@ router.post("/", async (req, res) => {
       default:
         internalStatus = "FAILED";
     }
+
+    console.log("Internal Status:", internalStatus);
 
     /* ======================================
        INSERT INTO PAYMENTS (IDEMPOTENT)
@@ -154,129 +163,128 @@ router.post("/", async (req, res) => {
       return res.status(500).send("Insert failed");
     }
 
-/* ======================================
-   REGISTRATION FEE HANDLING
-====================================== */
+    /* ======================================
+       REGISTRATION FEE HANDLING
+    ====================================== */
 
-if (purpose === "registration_fee") {
+    if (purpose === "registration_fee") {
 
-  const { data: feeConfig, error: feeError } = await supabase
-    .from("platform_config")
-    .select("value")
-    .eq("key", "registration_fee")
-    .single();
+      console.log("Registration fee payment detected");
 
-  if (feeError || !feeConfig) {
-    console.error("Registration fee config missing");
-    return res.status(500).send("Fee config error");
-  }
+      const { data: feeConfig, error: feeError } = await supabase
+        .from("platform_config")
+        .select("value")
+        .eq("key", "registration_fee")
+        .single();
 
-  const expectedFee = Number(feeConfig.value);
-
-  if (Math.round(gross * 100) !== Math.round(expectedFee * 100)) {
-    console.error("Invalid registration fee amount");
-    return res.status(400).send("Invalid amount");
-  }
-
-  if (internalStatus === "COMPLETE") {
-
-    console.log("🔄 Processing registration completion...");
-
-    const { error: rpcError } = await supabase.rpc(
-      "complete_registration_payment",
-      {
-        p_business_id: referenceId,
-        p_transaction_id: TransactionId,
-        p_amount: gross,
+      if (feeError || !feeConfig) {
+        console.error("Registration fee config missing");
+        return res.status(500).send("Fee config error");
       }
-    );
 
-    if (rpcError) {
-      console.error("❌ Activation RPC failed:", rpcError.message);
-      return res.status(500).send("Activation failed");
-    }
+      const expectedFee = Number(feeConfig.value);
 
-    console.log("🟢 Registration completed & business activated safely");
-  }
+      if (Math.round(gross * 100) !== Math.round(expectedFee * 100)) {
+        console.error("Invalid registration fee amount");
+        return res.status(400).send("Invalid amount");
+      }
 
-} else {
+      if (internalStatus === "COMPLETE") {
 
-  /* ======================================
-     QR PAYMENT LOGIC
-  ====================================== */
+        console.log("🔄 Processing registration completion...");
 
-  const { data: existing } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("provider_ref", TransactionId)
-    .maybeSingle();
+        const { error: rpcError } = await supabase.rpc(
+          "complete_registration_payment",
+          {
+            p_business_id: referenceId,
+            p_transaction_id: TransactionId,
+            p_amount: gross,
+          }
+        );
 
-  if (!existing) {
+        if (rpcError) {
+          console.error("❌ Activation RPC failed:", rpcError.message);
+          return res.status(500).send("Activation failed");
+        }
 
-    if (internalStatus !== "COMPLETE") {
-
-      await supabase.from("transactions").insert({
-        business_id: referenceId,
-        provider_ref: TransactionId,
-        provider: "ozow",
-        status: internalStatus,
-        amount_gross: gross,
-        amount_net: 0,
-        ozow_fee: 0,
-        ozow_vat: 0,
-        platform_fee: 0,
-        platform_vat: 0,
-        payout_fee: 0,
-      });
+        console.log("🟢 Registration completed & business activated safely");
+      }
 
     } else {
+      console.log("QR payment branch triggered");
 
-      const fee = await calculateFees(gross, referenceId);
+      /* ======================================
+         QR PAYMENT LOGIC
+      ====================================== */
 
-      await supabase.rpc("process_ozow_payment", {
-        p_business_id: referenceId,
-        p_provider_ref: TransactionId,
-        p_amount_gross: fee.amount_gross,
-        p_ozow_fee: fee.ozow_fee,
-        p_ozow_vat: fee.ozow_vat,
-        p_platform_fee: fee.platform_fee,
-        p_platform_vat: fee.platform_vat,
-        p_payout_fee: fee.payout_fee,
-        p_amount_net: fee.amount_net,
-      });
+      const { data: existing } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("provider_ref", TransactionId)
+        .maybeSingle();
+
+      if (!existing) {
+
+        if (internalStatus !== "COMPLETE") {
+
+          await supabase.from("transactions").insert({
+            business_id: referenceId,
+            provider_ref: TransactionId,
+            provider: "ozow",
+            status: internalStatus,
+            amount_gross: gross,
+            amount_net: 0,
+            ozow_fee: 0,
+            ozow_vat: 0,
+            platform_fee: 0,
+            platform_vat: 0,
+            payout_fee: 0,
+          });
+
+        } else {
+
+          const fee = await calculateFees(gross, referenceId);
+
+          await supabase.rpc("process_ozow_payment", {
+            p_business_id: referenceId,
+            p_provider_ref: TransactionId,
+            p_amount_gross: fee.amount_gross,
+            p_ozow_fee: fee.ozow_fee,
+            p_ozow_vat: fee.ozow_vat,
+            p_platform_fee: fee.platform_fee,
+            p_platform_vat: fee.platform_vat,
+            p_payout_fee: fee.payout_fee,
+            p_amount_net: fee.amount_net,
+          });
+        }
+
+      } else if (
+        existing.status !== "COMPLETE" &&
+        internalStatus === "COMPLETE"
+      ) {
+
+        const fee = await calculateFees(gross, referenceId);
+
+        await supabase.rpc("process_ozow_payment", {
+          p_business_id: referenceId,
+          p_provider_ref: TransactionId,
+          p_amount_gross: fee.amount_gross,
+          p_ozow_fee: fee.ozow_fee,
+          p_ozow_vat: fee.ozow_vat,
+          p_platform_fee: fee.platform_fee,
+          p_platform_vat: fee.platform_vat,
+          p_payout_fee: fee.payout_fee,
+          p_amount_net: fee.amount_net,
+        });
+
+      } else if (existing.status !== internalStatus) {
+
+        await supabase
+          .from("transactions")
+          .update({ status: internalStatus })
+          .eq("provider_ref", TransactionId);
+      }
     }
-
-  } else if (
-    existing.status !== "COMPLETE" &&
-    internalStatus === "COMPLETE"
-  ) {
-
-    const fee = await calculateFees(gross, referenceId);
-
-    await supabase.rpc("process_ozow_payment", {
-      p_business_id: referenceId,
-      p_provider_ref: TransactionId,
-      p_amount_gross: fee.amount_gross,
-      p_ozow_fee: fee.ozow_fee,
-      p_ozow_vat: fee.ozow_vat,
-      p_platform_fee: fee.platform_fee,
-      p_platform_vat: fee.platform_vat,
-      p_payout_fee: fee.payout_fee,
-      p_amount_net: fee.amount_net,
-    });
-
-  } else if (existing.status !== internalStatus) {
-
-    await supabase
-      .from("transactions")
-      .update({ status: internalStatus })
-      .eq("provider_ref", TransactionId);
-  }
-}
-
-    /* ======================================
-       MARK PAYMENT PROCESSED
-    ====================================== */
 
     await supabase
       .from("payments")
@@ -289,7 +297,7 @@ if (purpose === "registration_fee") {
     return res.status(200).send("OK");
 
   } catch (err) {
-    console.error("❌ Webhook error:", err);
+    console.error("❌ Webhook error:", err.message);
     return res.status(200).send("OK");
   }
 });
