@@ -15,14 +15,10 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  optional1 = "",
-  optional2 = "",
-  optional3 = "",
-  optional4 = "",
-  optional5 = "",
+  optional1,
   privateKey,
 }) {
-  const inputString =
+  let inputString =
     siteCode +
     countryCode +
     currencyCode +
@@ -33,13 +29,15 @@ function generateHash({
     errorUrl +
     successUrl +
     notifyUrl +
-    String(isTest) +
-    optional1 +
-    optional2 +
-    optional3 +
-    optional4 +
-    optional5 +
-    privateKey;
+    String(isTest);
+
+  // Only append optional1 if present
+  if (optional1) {
+    inputString += optional1;
+  }
+
+  // Append private key last
+  inputString += privateKey;
 
   return crypto
     .createHash("sha512")
@@ -82,20 +80,20 @@ export async function createOzowPayment({
   const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
-    siteCode,
-    countryCode,
-    currencyCode,
-    amount: formattedAmount,
-    transactionReference,
-    bankReference,
-    cancelUrl,
-    errorUrl,
-    successUrl,
-    notifyUrl,
-    isTest,
-    optional1,
-    privateKey,
-  });
+  siteCode,
+  countryCode,
+  currencyCode,
+  amount: formattedAmount,
+  transactionReference,
+  bankReference,
+  cancelUrl,
+  errorUrl,
+  successUrl,
+  notifyUrl,
+  isTest,
+  optional1,
+  privateKey,
+});
 
   const payload = {
     siteCode,
