@@ -39,33 +39,33 @@ export default function PayRegistration() {
     loadBusiness();
   }, []);
 
-  const handlePayment = async () => {
-    try {
-      setError("");
+const handlePayment = async () => {
+  try {
+    setError("");
 
-      const response = await fetch("/api/ozow/create-registration-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          businessId: business.id
-        })
-      });
+    const response = await fetch("/api/ozow/create-registration", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        business_id: business.id
+      })
+    });
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (!result.paymentUrl) {
-        throw new Error("Payment initialization failed");
-      }
-
-      window.location.href = result.paymentUrl;
-
-    } catch (err) {
-      console.error(err);
-      setError("Failed to start payment. Please try again.");
+    if (!response.ok || !result.paymentUrl) {
+      throw new Error(result.error || "Payment initialization failed");
     }
-  };
+
+    window.location.href = result.paymentUrl;
+
+  } catch (err) {
+    console.error(err);
+    setError("Failed to start payment. Please try again.");
+  }
+};
 
   if (loading) {
     return <div style={{ padding: 30 }}>Loading...</div>;
