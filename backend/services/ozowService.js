@@ -15,8 +15,7 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  optional1,
-  privateKey,
+    privateKey,
 }) {
   let inputString =
     siteCode +
@@ -101,7 +100,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
     privateKey,
   });
 
@@ -117,7 +115,6 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
-    optional1,
     hashCheck,
   };
 
