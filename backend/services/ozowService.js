@@ -2,7 +2,6 @@ import crypto from "crypto";
 
 /**
  * Generate Ozow SHA512 hash
- * Order MUST match Ozow specification exactly
  */
 function generateHash({
   siteCode,
@@ -42,11 +41,9 @@ function generateHash({
     optional5 +
     privateKey;
 
-  const lower = inputString.toLowerCase();
-
   return crypto
     .createHash("sha512")
-    .update(lower)
+    .update(inputString.toLowerCase())
     .digest("hex");
 }
 
@@ -82,7 +79,6 @@ export async function createOzowPayment({
   }
 
   const formattedAmount = numericAmount.toFixed(2);
-
   const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
@@ -100,8 +96,6 @@ export async function createOzowPayment({
     optional1,
     privateKey,
   });
-console.log("HASH STRING:", inputString.toLowerCase());
-console.log("HASH RESULT:", crypto.createHash("sha512").update(inputString.toLowerCase()).digest("hex"));
 
   const payload = {
     siteCode,
@@ -118,7 +112,6 @@ console.log("HASH RESULT:", crypto.createHash("sha512").update(inputString.toLow
     optional1,
     hashCheck,
   };
-
 
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
