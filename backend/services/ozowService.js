@@ -100,6 +100,8 @@ export async function createOzowPayment({
     optional1,
     privateKey,
   });
+console.log("HASH STRING:", inputString.toLowerCase());
+console.log("HASH RESULT:", crypto.createHash("sha512").update(inputString.toLowerCase()).digest("hex"));
 
   const payload = {
     siteCode,
@@ -117,8 +119,6 @@ export async function createOzowPayment({
     hashCheck,
   };
 
-console.log("HASH STRING:", inputString.toLowerCase());
-console.log("HASH RESULT:", crypto.createHash("sha512").update(inputString.toLowerCase()).digest("hex"));
 
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
