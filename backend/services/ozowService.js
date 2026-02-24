@@ -30,10 +30,6 @@ function generateHash({
     notifyUrl +
     String(isTest);
 
-  if (optional1) {
-    inputString += optional1;
-  }
-
   inputString += privateKey;
 
   console.log("----- OZOW HASH STRING -----");
