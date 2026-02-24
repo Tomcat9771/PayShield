@@ -31,13 +31,16 @@ function generateHash({
     notifyUrl +
     String(isTest);
 
-  // Only append optional1 if present
   if (optional1) {
     inputString += optional1;
   }
 
-  // Append private key last
   inputString += privateKey;
+
+  console.log("----- OZOW HASH STRING -----");
+  console.log(inputString);
+  console.log("----- LOWERCASED -----");
+  console.log(inputString.toLowerCase());
 
   return crypto
     .createHash("sha512")
@@ -67,6 +70,13 @@ export async function createOzowPayment({
   const successUrl = process.env.OZOW_SUCCESS_URL?.trim();
   const notifyUrl = process.env.OZOW_NOTIFY_URL?.trim();
 
+  console.log("----- OZOW URL VALUES -----");
+  console.log("cancelUrl:", cancelUrl);
+  console.log("errorUrl:", errorUrl);
+  console.log("successUrl:", successUrl);
+  console.log("notifyUrl:", notifyUrl);
+  console.log("isTest:", isTest);
+
   if (!cancelUrl || !errorUrl || !successUrl || !notifyUrl) {
     throw new Error("Ozow redirect URLs not configured");
   }
@@ -80,20 +90,20 @@ export async function createOzowPayment({
   const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
-  siteCode,
-  countryCode,
-  currencyCode,
-  amount: formattedAmount,
-  transactionReference,
-  bankReference,
-  cancelUrl,
-  errorUrl,
-  successUrl,
-  notifyUrl,
-  isTest,
-  optional1,
-  privateKey,
-});
+    siteCode,
+    countryCode,
+    currencyCode,
+    amount: formattedAmount,
+    transactionReference,
+    bankReference,
+    cancelUrl,
+    errorUrl,
+    successUrl,
+    notifyUrl,
+    isTest,
+    optional1,
+    privateKey,
+  });
 
   const payload = {
     siteCode,
