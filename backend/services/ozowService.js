@@ -2,7 +2,6 @@ import crypto from "crypto";
 
 /**
  * Generate Ozow SHA512 hash
- * Order MUST match Ozow specification exactly
  */
 function generateHash({
   siteCode,
@@ -16,6 +15,11 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
+  optional1 = "",
+  optional2 = "",
+  optional3 = "",
+  optional4 = "",
+  optional5 = "",
   privateKey,
 }) {
   const inputString =
@@ -30,6 +34,11 @@ function generateHash({
     successUrl +
     notifyUrl +
     String(isTest) +
+    optional1 +
+    optional2 +
+    optional3 +
+    optional4 +
+    optional5 +
     privateKey;
 
   return crypto
@@ -42,7 +51,6 @@ export async function createOzowPayment({
   amount,
   transactionReference,
   bankReference,
-  customer = null,
 }) {
   const siteCode = process.env.OZOW_SITE_CODE?.trim();
   const apiKey = process.env.OZOW_API_KEY?.trim();
@@ -54,8 +62,6 @@ export async function createOzowPayment({
 
   const countryCode = "ZA";
   const currencyCode = "ZAR";
-
-  // IMPORTANT: Must be boolean true/false
   const isTest = process.env.OZOW_IS_TEST === "true";
 
   const cancelUrl = process.env.OZOW_CANCEL_URL?.trim();
@@ -72,8 +78,10 @@ export async function createOzowPayment({
     throw new Error("Invalid amount supplied to Ozow");
   }
 
-  // Must always be 2 decimal places as string
   const formattedAmount = numericAmount.toFixed(2);
+
+  // 🔥 REQUIRED for registration detection
+  const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
     siteCode,
@@ -87,24 +95,25 @@ export async function createOzowPayment({
     successUrl,
     notifyUrl,
     isTest,
+    optional1,
     privateKey,
   });
 
   const payload = {
-  siteCode,
-  countryCode,
-  currencyCode,
-  amount: formattedAmount,
-  transactionReference,
-  bankReference,
-  cancelUrl,
-  errorUrl,
-  successUrl,
-  notifyUrl,
-  isTest,
-  optional1: "registration_fee", // 🔥 ADD THIS BACK
-  hashCheck,
-};
+    siteCode,
+    countryCode,
+    currencyCode,
+    amount: formattedAmount,
+    transactionReference,
+    bankReference,
+    cancelUrl,
+    errorUrl,
+    successUrl,
+    notifyUrl,
+    isTest,
+    optional1,
+    hashCheck,
+  };
 
   const apiUrl = isTest
     ? "https://stagingapi.ozow.com/PostPaymentRequest"
