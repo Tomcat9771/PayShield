@@ -25,11 +25,11 @@ jobs:
       - name: Run npm audit (high severity only)
         run: npm audit --audit-level=high
 
-      - name: Run Semgrep (OSS rules)
+            - name: Run Semgrep (OSS rules)
         uses: returntocorp/semgrep-action@v1
         with:
           config: auto
-          paths: |
+          scan-path: |
             backend
             frontend/src
         env:
