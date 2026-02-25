@@ -19,18 +19,18 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install dependencies
+      - name: Install backend dependencies
+        working-directory: backend
         run: npm ci
 
       - name: Run npm audit (high severity only)
+        working-directory: backend
         run: npm audit --audit-level=high
 
-            - name: Run Semgrep (OSS rules)
+      - name: Run Semgrep (OSS rules)
         uses: returntocorp/semgrep-action@v1
         with:
           config: auto
-          scan-path: |
-            backend
-            frontend/src
+          scan-path: backend frontend/src
         env:
           SEMGREP_SEND_METRICS: "off"
