@@ -32,9 +32,6 @@ jobs:
       - name: Run Semgrep (OSS rules)
         uses: returntocorp/semgrep-action@v1
         with:
-          config: auto
-          args: >
-            backend
-            frontend/src
+          arg:"--config auto backend frontend/src"
         env:
           SEMGREP_SEND_METRICS: "off"
