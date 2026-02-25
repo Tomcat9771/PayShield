@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 18
 
-      # Backend dependencies only
+      # Backend audit
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
@@ -28,11 +28,12 @@ jobs:
         working-directory: backend
         run: npm audit --audit-level=high
 
+      # Semgrep SAST
       - name: Run Semgrep (OSS rules)
         uses: returntocorp/semgrep-action@v1
         with:
+          config: auto
           args: >
-            --config auto
             backend
             frontend/src
         env:
