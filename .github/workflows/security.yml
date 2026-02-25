@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 18
 
+      # Backend dependencies only
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
@@ -30,7 +31,9 @@ jobs:
       - name: Run Semgrep (OSS rules)
         uses: returntocorp/semgrep-action@v1
         with:
-          config: auto
-          scan-path: backend frontend/src
+          args: >
+            --config auto
+            backend
+            frontend/src
         env:
           SEMGREP_SEND_METRICS: "off"
