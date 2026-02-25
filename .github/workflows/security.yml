@@ -30,11 +30,11 @@ jobs:
 
       # Semgrep SAST
       - name: Run Semgrep (OSS rules)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: auto
-          args: >
-            backend
-            frontend/src
-        env:
-          SEMGREP_SEND_METRICS: "off"
+  	uses: returntocorp/semgrep-action@v1
+  	with:
+    	config: auto
+    	args: >
+      --include backend
+      --include frontend/src
+  	env:
+    	SEMGREP_SEND_METRICS: "off"
