@@ -1,0 +1,5 @@
+# Frontend env files contain public Supabase anon keys
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
