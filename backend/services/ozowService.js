@@ -18,7 +18,7 @@ function generateHash({
   privateKey,
 }) {
 
-  let inputString =
+  const hashString =
     siteCode +
     countryCode +
     currencyCode +
@@ -29,13 +29,12 @@ function generateHash({
     errorUrl +
     successUrl +
     notifyUrl +
-    String(isTest);
-
-  inputString += privateKey;
+    isTest +
+    privateKey;
 
   return crypto
     .createHash("sha512")
-    .update(inputString.toLowerCase())
+    .update(hashString)
     .digest("hex");
 }
 
@@ -76,6 +75,8 @@ export async function createOzowPayment({
 
   const formattedAmount = numericAmount.toFixed(2);
 
+  const isTestString = isTest ? "true" : "false";
+
   const hashCheck = generateHash({
     siteCode,
     countryCode,
@@ -87,28 +88,28 @@ export async function createOzowPayment({
     errorUrl,
     successUrl,
     notifyUrl,
-    isTest,
+    isTest: isTestString,
     privateKey,
   });
 
   const payload = {
-    siteCode,
-    countryCode,
-    currencyCode,
-    amount: formattedAmount,
-    transactionReference,
-    bankReference,
-    cancelUrl,
-    errorUrl,
-    successUrl,
-    notifyUrl,
-    isTest,
-    hashCheck,
+    SiteCode: siteCode,
+    CountryCode: countryCode,
+    CurrencyCode: currencyCode,
+    Amount: formattedAmount,
+    TransactionReference: transactionReference,
+    BankReference: bankReference,
+    CancelUrl: cancelUrl,
+    ErrorUrl: errorUrl,
+    SuccessUrl: successUrl,
+    NotifyUrl: notifyUrl,
+    IsTest: isTestString,
+    HashCheck: hashCheck,
 
-    // CONTEXT FIELDS (VERY IMPORTANT)
-    optional1: businessId,
-    optional2: purpose,
-    optional3: transactionReference,
+    // Optional context fields
+    Optional1: businessId,
+    Optional2: purpose,
+    Optional3: transactionReference,
   };
 
   const apiUrl = isTest
