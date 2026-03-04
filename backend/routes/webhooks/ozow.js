@@ -27,14 +27,14 @@ router.post("/", async (req, res) => {
     try {
       await supabase.from("webhook_logs").insert({
         provider: "ozow",
-        payload,
+        payload
       });
     } catch (e) {
       console.error("Webhook log failed:", e.message);
     }
 
     /* ======================================
-       HASH VALIDATION
+       EXTRACT PAYLOAD
     ====================================== */
 
     const {
@@ -58,6 +58,10 @@ router.post("/", async (req, res) => {
     console.log("Webhook TransactionReference:", TransactionReference);
     console.log("Webhook TransactionId:", TransactionId);
     console.log("Webhook Amount:", Amount);
+
+    /* ======================================
+       HASH VALIDATION
+    ====================================== */
 
     const hashString = (
       SiteCode +
@@ -112,9 +116,10 @@ router.post("/", async (req, res) => {
        NORMALISE STATUS
     ====================================== */
 
-    let internalStatus;
+    let internalStatus = "FAILED";
 
     switch (Status?.toUpperCase()) {
+
       case "COMPLETE":
         internalStatus = "COMPLETE";
         break;
@@ -130,8 +135,6 @@ router.post("/", async (req, res) => {
         internalStatus = "FAILED";
         break;
 
-      default:
-        internalStatus = "FAILED";
     }
 
     console.log("Internal Status:", internalStatus);
@@ -166,7 +169,18 @@ router.post("/", async (req, res) => {
     }
 
     /* ======================================
-       UPDATE PAYMENT
+       VERIFY AMOUNT MATCHES
+    ====================================== */
+
+    if (Number(paymentRow.amount).toFixed(2) !== gross.toFixed(2)) {
+
+      console.error("Amount mismatch", paymentRow.amount, gross);
+
+      return res.status(400).send("Amount mismatch");
+    }
+
+    /* ======================================
+       UPDATE PAYMENT STATUS
     ====================================== */
 
     await supabase
@@ -183,45 +197,38 @@ router.post("/", async (req, res) => {
     const purpose = paymentRow.purpose;
 
     /* ======================================
-       REGISTRATION FEE HANDLING
+       REGISTRATION FEE LOGIC
     ====================================== */
 
     if (purpose === "registration_fee") {
 
       console.log("Registration fee payment detected");
 
-      const { data: feeConfig } = await supabase
-        .from("platform_config")
-        .select("value")
-        .eq("key", "registration_fee")
-        .single();
-
-      const expectedFee = Number(feeConfig.value);
-
-      if (Math.round(gross * 100) !== Math.round(expectedFee * 100)) {
-        console.error("Invalid registration fee amount");
-        return res.status(400).send("Invalid amount");
-      }
-
       if (internalStatus === "COMPLETE") {
 
-        const { error: rpcError } = await supabase.rpc(
+        const { error } = await supabase.rpc(
           "complete_registration_payment",
           {
             p_business_id: businessId,
             p_transaction_id: TransactionId,
-            p_amount: gross,
+            p_amount: gross
           }
         );
 
-        if (rpcError) {
-          console.error("Activation RPC failed:", rpcError.message);
+        if (error) {
+          console.error("Activation RPC failed:", error.message);
         }
 
-        console.log("🟢 Registration completed");
+        console.log("🟢 Registration activated");
       }
 
-    } else {
+    }
+
+    /* ======================================
+       QR PAYMENT LOGIC
+    ====================================== */
+
+    if (purpose === "qr_payment") {
 
       console.log("QR payment branch triggered");
 
@@ -236,18 +243,24 @@ router.post("/", async (req, res) => {
         const fee = await calculateFees(gross, businessId);
 
         await supabase.rpc("process_ozow_payment", {
+
           p_business_id: businessId,
           p_provider_ref: TransactionId,
+
           p_amount_gross: fee.amount_gross,
           p_ozow_fee: fee.ozow_fee,
           p_ozow_vat: fee.ozow_vat,
+
           p_platform_fee: fee.platform_fee,
           p_platform_vat: fee.platform_vat,
+
           p_payout_fee: fee.payout_fee,
-          p_amount_net: fee.amount_net,
+          p_amount_net: fee.amount_net
+
         });
 
       }
+
     }
 
     /* ======================================
@@ -261,6 +274,8 @@ router.post("/", async (req, res) => {
         processed_at: new Date()
       })
       .eq("id", paymentRow.id);
+
+    console.log("✅ Payment processed successfully");
 
     return res.status(200).send("OK");
 
