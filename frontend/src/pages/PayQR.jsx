@@ -11,6 +11,7 @@ export default function PayQR() {
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadingMerchant, setLoadingMerchant] = useState(true);
 
   /* =============================
      LOAD MERCHANT NAME
@@ -22,14 +23,21 @@ export default function PayQR() {
 
       try {
 
+        console.log("Loading merchant for:", qr_code);
+
         const res = await api.get(`/ozow/qr/${qr_code}`);
 
+        console.log("Merchant response:", res.data);
+
         setMerchant(res.data.merchant);
+        setLoadingMerchant(false);
 
       } catch (err) {
 
-        console.error("QR lookup failed", err);
-        setError("Invalid QR code");
+        console.error("Merchant lookup failed:", err);
+
+        setError("Unable to load merchant");
+        setLoadingMerchant(false);
 
       }
 
@@ -106,57 +114,41 @@ export default function PayQR() {
         }}
       >
 
-        {/* =============================
-            MERCHANT INFO
-        ============================= */}
+        {loadingMerchant && (
+          <p style={{ color:"#444" }}>
+            Loading merchant...
+          </p>
+        )}
 
-        {merchant ? (
-
+        {!loadingMerchant && merchant && (
           <>
-            <h2
-              style={{
-                color: "#111",
-                marginBottom: "5px",
-                fontWeight: "600"
-              }}
-            >
+            <h2 style={{ color:"#111", marginBottom:"4px" }}>
               {merchant}
             </h2>
 
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#16a34a",
-                fontWeight: "bold",
-                marginBottom: "6px"
-              }}
-            >
+            <p style={{
+              fontSize:"12px",
+              color:"#16a34a",
+              fontWeight:"bold"
+            }}>
               ✔ Verified PayShield Merchant
-            </div>
+            </p>
 
-            <div
-              style={{
-                fontSize: "11px",
-                color: "#777",
-                marginBottom: "15px"
-              }}
-            >
+            <p style={{
+              fontSize:"11px",
+              color:"#777",
+              marginBottom:"10px"
+            }}>
               Powered by PayShield
-            </div>
-
+            </p>
           </>
-
-        ) : (
-
-          <p style={{ color: "#444" }}>
-            Loading merchant...
-          </p>
-
         )}
 
-        {/* =============================
-            AMOUNT
-        ============================= */}
+        {!loadingMerchant && !merchant && (
+          <p style={{ color:"red" }}>
+            Merchant not found
+          </p>
+        )}
 
         <input
           placeholder="Amount (ZAR)"
@@ -164,74 +156,50 @@ export default function PayQR() {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           style={{
-            width: "100%",
-            padding: "12px",
-            borderRadius: "8px",
-            border: "1px solid #ddd",
-            marginTop: "10px",
-            fontSize: "14px"
+            width:"100%",
+            padding:"12px",
+            borderRadius:"8px",
+            border:"1px solid #ddd",
+            marginTop:"10px"
           }}
         />
-
-        {/* =============================
-            REFERENCE
-        ============================= */}
 
         <input
           placeholder="Reference (optional)"
           value={reference}
           onChange={(e) => setReference(e.target.value)}
           style={{
-            width: "100%",
-            padding: "12px",
-            borderRadius: "8px",
-            border: "1px solid #ddd",
-            marginTop: "10px",
-            fontSize: "14px"
+            width:"100%",
+            padding:"12px",
+            borderRadius:"8px",
+            border:"1px solid #ddd",
+            marginTop:"10px"
           }}
         />
-
-        {/* =============================
-            PAY BUTTON
-        ============================= */}
 
         <button
           onClick={handlePayment}
           disabled={loading}
           style={{
-            marginTop: "20px",
-            width: "100%",
-            padding: "14px",
-            background: "#facc15",
-            border: "none",
-            borderRadius: "10px",
-            fontWeight: "bold",
-            fontSize: "16px",
-            cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+            marginTop:"20px",
+            width:"100%",
+            padding:"14px",
+            background:"#facc15",
+            border:"none",
+            borderRadius:"10px",
+            fontWeight:"bold",
+            fontSize:"16px",
+            cursor:"pointer",
+            boxShadow:"0 4px 12px rgba(0,0,0,0.15)"
           }}
         >
-
           {loading ? "Redirecting..." : "Pay Now"}
-
         </button>
 
-        {/* =============================
-            ERROR MESSAGE
-        ============================= */}
-
         {error && (
-
-          <p
-            style={{
-              color: "red",
-              marginTop: "12px",
-              fontSize: "13px"
-            }}
-          >
+          <p style={{ color:"red", marginTop:"10px" }}>
             {error}
           </p>
-
         )}
 
       </div>
