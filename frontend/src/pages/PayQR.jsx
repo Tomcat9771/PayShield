@@ -24,8 +24,6 @@ export default function PayQR() {
 
         const res = await api.get(`/ozow/qr/${qr_code}`);
 
-        console.log("Merchant API:", res.data);
-
         setMerchant(res.data.merchant);
 
       } catch (err) {
@@ -93,30 +91,72 @@ export default function PayQR() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#3b0764"
+        background: "linear-gradient(135deg,#4c0070,#2d0050)"
       }}
     >
 
       <div
         style={{
-          background: "white",
+          background: "#ffffff",
           padding: "40px",
           borderRadius: "16px",
           width: "380px",
-          textAlign: "center"
+          textAlign: "center",
+          boxShadow: "0 15px 35px rgba(0,0,0,0.25)"
         }}
       >
 
+        {/* =============================
+            MERCHANT INFO
+        ============================= */}
+
         {merchant ? (
+
           <>
-            <h2>Pay {merchant}</h2>
-            <p style={{ fontSize: "12px", color: "#666" }}>
+            <h2
+              style={{
+                color: "#111",
+                marginBottom: "5px",
+                fontWeight: "600"
+              }}
+            >
+              {merchant}
+            </h2>
+
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#16a34a",
+                fontWeight: "bold",
+                marginBottom: "6px"
+              }}
+            >
+              ✔ Verified PayShield Merchant
+            </div>
+
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#777",
+                marginBottom: "15px"
+              }}
+            >
               Powered by PayShield
-            </p>
+            </div>
+
           </>
+
         ) : (
-          <p>Loading merchant...</p>
+
+          <p style={{ color: "#444" }}>
+            Loading merchant...
+          </p>
+
         )}
+
+        {/* =============================
+            AMOUNT
+        ============================= */}
 
         <input
           placeholder="Amount (ZAR)"
@@ -126,9 +166,16 @@ export default function PayQR() {
           style={{
             width: "100%",
             padding: "12px",
-            marginTop: "20px"
+            borderRadius: "8px",
+            border: "1px solid #ddd",
+            marginTop: "10px",
+            fontSize: "14px"
           }}
         />
+
+        {/* =============================
+            REFERENCE
+        ============================= */}
 
         <input
           placeholder="Reference (optional)"
@@ -137,9 +184,16 @@ export default function PayQR() {
           style={{
             width: "100%",
             padding: "12px",
-            marginTop: "10px"
+            borderRadius: "8px",
+            border: "1px solid #ddd",
+            marginTop: "10px",
+            fontSize: "14px"
           }}
         />
+
+        {/* =============================
+            PAY BUTTON
+        ============================= */}
 
         <button
           onClick={handlePayment}
@@ -147,24 +201,42 @@ export default function PayQR() {
           style={{
             marginTop: "20px",
             width: "100%",
-            padding: "12px",
+            padding: "14px",
             background: "#facc15",
             border: "none",
-            borderRadius: "8px",
-            fontWeight: "bold"
+            borderRadius: "10px",
+            fontWeight: "bold",
+            fontSize: "16px",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
           }}
         >
+
           {loading ? "Redirecting..." : "Pay Now"}
+
         </button>
 
+        {/* =============================
+            ERROR MESSAGE
+        ============================= */}
+
         {error && (
-          <p style={{ color: "red", marginTop: "10px" }}>
+
+          <p
+            style={{
+              color: "red",
+              marginTop: "12px",
+              fontSize: "13px"
+            }}
+          >
             {error}
           </p>
+
         )}
 
       </div>
 
     </div>
+
   );
 }
