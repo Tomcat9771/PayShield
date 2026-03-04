@@ -19,6 +19,7 @@ import EmailConfirmed from "./pages/EmailConfirmed";
 import CheckEmail from "./pages/CheckEmail";
 import PayCustomer from "./pages/PayCustomer";
 import PayQR from "./pages/PayQR";
+import PaymentHistory from "./pages/PaymentHistory";
 
 
 
@@ -150,6 +151,17 @@ function App() {
           </ProtectedRoute>
         }
       />
+<Route
+  path="/payments"
+  element={
+    <ProtectedRoute mode="approved">
+      <Layout>
+        <PaymentHistory />
+      </Layout>
+    </ProtectedRoute>
+  }
+/>
+
 <Route path="/check-email" element={<CheckEmail />} />
 <Route path="/email-confirmed" element={<EmailConfirmed />} />
 <Route path="/pay/:qrCode" element={<PayQR />} />

@@ -146,6 +146,51 @@ router.post("/:id/activate", async (req, res) => {
   res.json({ ok: true });
 });
 
+/* =========================================================
+   MERCHANT PAYMENT HISTORY
+========================================================= */
+
+router.get("/:business_id/payments", async (req, res) => {
+
+  try {
+
+    const { business_id } = req.params;
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(`
+        id,
+        amount_gross,
+        amount_net,
+        status,
+        created_at,
+        provider_ref
+      `)
+      .eq("business_id", business_id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({
+        error: "Failed to fetch transactions"
+      });
+    }
+
+    return res.json(data);
+
+  } catch (err) {
+
+    console.error(err);
+
+    return res.status(500).json({
+      error: "Transaction lookup failed"
+    });
+
+  }
+
+});
+
 /* =====================================================
    SOFT DELETE (REJECT)
 ===================================================== */
