@@ -35,7 +35,7 @@ function generateHash({
 
   return crypto
     .createHash("sha512")
-    .update(inputString.toLowerCase())   // REQUIRED BY OZOW
+    .update(inputString.toLowerCase())
     .digest("hex");
 }
 
@@ -105,7 +105,6 @@ export async function createOzowPayment({
     isTest,
     hashCheck,
 
-    // optional metadata
     optional1: businessId,
     optional2: purpose,
     optional3: transactionReference,
@@ -133,4 +132,3 @@ export async function createOzowPayment({
 
   return data;
 }
-
