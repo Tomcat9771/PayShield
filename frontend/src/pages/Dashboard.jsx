@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { layout, typography } from "../theme";
 import { QRCodeCanvas } from "qrcode.react";
 import GoldButton from "../components/GoldButton";
+
 export default function Dashboard() {
 
 const navigate = useNavigate();
@@ -37,7 +38,6 @@ navigate("/login");
 return;
 }
 
-// Get business
 const { data: business } = await supabase
 .from("businesses")
 .select("id,business_name")
@@ -51,7 +51,6 @@ return;
 
 setBusinessName(business.business_name);
 
-// Get registration
 const { data: registration } = await supabase
 .from("business_registrations")
 .select("id,status")
@@ -68,7 +67,6 @@ navigate("/awaiting-approval");
 return;
 }
 
-// Get QR code
 const { data: qr } = await supabase
 .from("qr_codes")
 .select("code")
@@ -85,9 +83,7 @@ setQrCode(qrUrl);
 
 }
 
-/* =========================
-LOAD EARNINGS
-========================= */
+/* LOAD EARNINGS */
 
 const { data: tx } = await supabase
 .from("transactions")
@@ -133,9 +129,7 @@ month: monthTotal
 
 }
 
-/* =========================
-REALTIME PAYMENT LISTENER
-========================= */
+/* REALTIME PAYMENTS */
 
 realtimeChannel = supabase
 .channel("merchant-payments")
@@ -158,12 +152,10 @@ amount: payment.amount_net,
 reference: payment.provider_ref
 });
 
-// auto hide popup
 setTimeout(() => {
 setLatestPayment(null);
 }, 5000);
 
-// 🔔 play sound
 paymentSound.currentTime = 0;
 paymentSound.play().catch(() => {});
 
@@ -194,79 +186,82 @@ supabase.removeChannel(realtimeChannel);
 
 }, [navigate]);
 
+/* QR DOWNLOAD */
+
 const downloadQR = async () => {
 
-  const qrCanvas = document.getElementById("merchantQR");
+const qrCanvas = document.getElementById("merchantQR");
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+const canvas = document.createElement("canvas");
+const ctx = canvas.getContext("2d");
 
-  canvas.width = 900;
-  canvas.height = 1100;
+canvas.width = 900;
+canvas.height = 1100;
 
-  // background
-  ctx.fillStyle = "#f5f5f5";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.fillStyle = "#f5f5f5";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // border
-  ctx.strokeStyle = "#5b2c83";
-  ctx.lineWidth = 12;
-  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+ctx.strokeStyle = "#5b2c83";
+ctx.lineWidth = 12;
+ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-  // load logo
-  const logo = new Image();
-  logo.src = "/payshield-logo.png";
+const logo = new Image();
+logo.src = "/payshield-logo.png";
 
-  logo.onload = () => {
+logo.onload = () => {
 
-    ctx.drawImage(logo, 350, 70, 200, 200);
+ctx.drawImage(logo, 350, 70, 200, 200);
 
-    // draw QR
-    ctx.drawImage(qrCanvas, 200, 330, 500, 500);
+ctx.drawImage(qrCanvas, 200, 330, 500, 500);
 
-    // company name
-    ctx.fillStyle = "#1f2937";
-    ctx.font = "bold 48px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      businessName,
-      canvas.width / 2,
-      900
-    );
+ctx.fillStyle = "#1f2937";
+ctx.font = "bold 48px Arial";
+ctx.textAlign = "center";
+ctx.fillText(businessName, canvas.width / 2, 900);
 
-    // footer
-    ctx.fillStyle = "#666";
-    ctx.font = "28px Arial";
-    ctx.fillText(
-      "Hosted by Shields Consulting",
-      canvas.width / 2,
-      980
-    );
+ctx.fillStyle = "#666";
+ctx.font = "28px Arial";
 
-    ctx.fillText(
-      "www.shieldsconsulting.co.za",
-      canvas.width / 2,
-      1020
-    );
+ctx.fillText(
+"Hosted by Shields Consulting",
+canvas.width / 2,
+980
+);
 
-    const link = document.createElement("a");
+ctx.fillText(
+"www.shieldsconsulting.co.za",
+canvas.width / 2,
+1020
+);
 
-    const safeName = businessName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-");
+const link = document.createElement("a");
 
-    link.download = `${safeName}-payshield-qr.png`;
-    link.href = canvas.toDataURL("image/png");
+const safeName = businessName
+.toLowerCase()
+.replace(/[^a-z0-9]/g, "-");
 
-    link.click();
+link.download = `${safeName}-payshield-qr.png`;
+link.href = canvas.toDataURL("image/png");
 
-  };
+link.click();
 
 };
 
-{/* =========================
-LIVE PAYMENT POPUP
-========================= */}
+};
+
+if (loading) {
+return <div style={layout.contentWrapper}>Loading...</div>;
+}
+
+return (
+
+<div style={layout.contentWrapper}>
+
+<h1 style={typography.heading}>Dashboard</h1>
+
+<p style={typography.text}>
+Welcome {businessName}
+</p>
 
 {latestPayment && (
 
@@ -293,7 +288,6 @@ R{Number(latestPayment.amount).toFixed(2)}
 </div>
 
 {latestPayment.reference && (
-
 <div style={{ fontSize: "12px", marginTop: "3px" }}>
 Ref: {latestPayment.reference}
 </div>
@@ -303,9 +297,7 @@ Ref: {latestPayment.reference}
 
 )}
 
-{/* =========================
-EARNINGS PANEL
-========================= */}
+{/* Earnings */}
 
 <div
 style={{
@@ -316,36 +308,21 @@ flexWrap: "wrap"
 }}
 >
 
-<div style={{
-background:"#fff",
-padding:"20px",
-borderRadius:"10px",
-width:"160px"
-}}>
+<div style={{background:"#fff",padding:"20px",borderRadius:"10px",width:"160px"}}>
 <b>Today</b>
 <div style={{fontSize:"20px",marginTop:"5px"}}>
 R{earnings.today.toFixed(2)}
 </div>
 </div>
 
-<div style={{
-background:"#fff",
-padding:"20px",
-borderRadius:"10px",
-width:"160px"
-}}>
+<div style={{background:"#fff",padding:"20px",borderRadius:"10px",width:"160px"}}>
 <b>This Week</b>
 <div style={{fontSize:"20px",marginTop:"5px"}}>
 R{earnings.week.toFixed(2)}
 </div>
 </div>
 
-<div style={{
-background:"#fff",
-padding:"20px",
-borderRadius:"10px",
-width:"160px"
-}}>
+<div style={{background:"#fff",padding:"20px",borderRadius:"10px",width:"160px"}}>
 <b>This Month</b>
 <div style={{fontSize:"20px",marginTop:"5px"}}>
 R{earnings.month.toFixed(2)}
@@ -354,9 +331,7 @@ R{earnings.month.toFixed(2)}
 
 </div>
 
-{/* =========================
-QR CODE
-========================= */}
+{/* QR */}
 
 {qrCode && (
 
@@ -367,7 +342,7 @@ padding: "30px",
 background: "#fff",
 borderRadius: "12px",
 width: "320px",
-textAlign: "center",
+textAlign: "center"
 }}
 >
 
@@ -380,40 +355,33 @@ size={220}
 includeMargin
 />
 
-<p
-style={{
-fontSize: "12px",
-marginTop: "10px",
-color: "#666",
-}}
->
+<p style={{fontSize:"12px",marginTop:"10px",color:"#666"}}>
 Scan to pay with PayShield
 </p>
 
 <button
 onClick={downloadQR}
 style={{
-marginTop: "20px",
-padding: "10px 16px",
-background: "#facc15",
-border: "none",
-borderRadius: "8px",
-fontWeight: "bold",
-cursor: "pointer",
+marginTop:"20px",
+padding:"10px 16px",
+background:"#facc15",
+border:"none",
+borderRadius:"8px",
+fontWeight:"bold",
+cursor:"pointer"
 }}
-
 >
-
-Download QR </button>
+Download QR
+</button>
 
 </div>
 
 )}
 
 <div style={{ marginTop: "30px" }}>
-  <GoldButton onClick={() => navigate("/payments")}>
-    View Payments
-  </GoldButton>
+<GoldButton onClick={() => navigate("/payments")}>
+View Payments
+</GoldButton>
 </div>
 
 </div>
