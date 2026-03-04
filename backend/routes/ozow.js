@@ -15,29 +15,17 @@ router.get("/qr/:qr_code", async (req, res) => {
 
     const { qr_code } = req.params;
 
-    if (!qr_code) {
-      return res.status(400).json({
-        error: "QR code required"
-      });
-    }
+    /* -------------------------
+       FIND QR
+    ------------------------- */
 
-    const { data: qr, error } = await supabase
+    const { data: qr, error: qrError } = await supabase
       .from("qr_codes")
-      .select(`
-        code,
-        active,
-        business_registrations (
-          business_id,
-          businesses (
-            business_name
-          )
-        )
-      `)
+      .select("registration_id, active")
       .eq("code", qr_code)
       .single();
 
-    if (error || !qr) {
-      console.log("QR lookup failed:", qr_code);
+    if (qrError || !qr) {
       return res.status(404).json({
         error: "QR not found"
       });
@@ -49,17 +37,40 @@ router.get("/qr/:qr_code", async (req, res) => {
       });
     }
 
-    const merchant =
-      qr?.business_registrations?.businesses?.business_name;
+    /* -------------------------
+       FIND REGISTRATION
+    ------------------------- */
 
-    if (!merchant) {
+    const { data: registration, error: regError } = await supabase
+      .from("business_registrations")
+      .select("business_id")
+      .eq("id", qr.registration_id)
+      .single();
+
+    if (regError || !registration) {
       return res.status(404).json({
-        error: "Merchant not found"
+        error: "Registration not found"
+      });
+    }
+
+    /* -------------------------
+       FIND BUSINESS
+    ------------------------- */
+
+    const { data: business, error: businessError } = await supabase
+      .from("businesses")
+      .select("business_name")
+      .eq("id", registration.business_id)
+      .single();
+
+    if (businessError || !business) {
+      return res.status(404).json({
+        error: "Business not found"
       });
     }
 
     return res.json({
-      merchant
+      merchant: business.business_name
     });
 
   } catch (err) {
@@ -73,7 +84,6 @@ router.get("/qr/:qr_code", async (req, res) => {
   }
 
 });
-
 
 /* =========================================================
    QR CUSTOMER PAYMENT
