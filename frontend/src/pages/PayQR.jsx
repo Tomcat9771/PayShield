@@ -4,17 +4,16 @@ import api from "../api";
 
 export default function PayQR() {
 
-  const { qr_code } = useParams();
+  const { qrCode } = useParams();   // FIXED PARAM NAME
 
   const [merchant, setMerchant] = useState(null);
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [loadingMerchant, setLoadingMerchant] = useState(true);
 
   /* =============================
-     LOAD MERCHANT NAME
+     LOAD MERCHANT
   ============================= */
 
   useEffect(() => {
@@ -23,31 +22,26 @@ export default function PayQR() {
 
       try {
 
-        console.log("Loading merchant for:", qr_code);
+        const res = await api.get(`/ozow/qr/${qrCode}`);
 
-        const res = await api.get(`/ozow/qr/${qr_code}`);
-
-        console.log("Merchant response:", res.data);
+        console.log("Merchant API:", res.data);
 
         setMerchant(res.data.merchant);
-        setLoadingMerchant(false);
 
       } catch (err) {
 
-        console.error("Merchant lookup failed:", err);
-
-        setError("Unable to load merchant");
-        setLoadingMerchant(false);
+        console.error("QR lookup failed", err);
+        setError("Invalid QR code");
 
       }
 
     };
 
-    if (qr_code) {
+    if (qrCode) {
       loadMerchant();
     }
 
-  }, [qr_code]);
+  }, [qrCode]);
 
   /* =============================
      CREATE PAYMENT
@@ -67,7 +61,7 @@ export default function PayQR() {
       setLoading(true);
 
       const res = await api.post("/ozow/create-payment", {
-        qr_code,
+        qr_code: qrCode,
         amount,
         reference
       });
@@ -99,54 +93,32 @@ export default function PayQR() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg,#4c0070,#2d0050)"
+        background: "#3b0764"
       }}
     >
 
       <div
         style={{
-          background: "#ffffff",
+          background: "white",
           padding: "40px",
           borderRadius: "16px",
           width: "380px",
-          textAlign: "center",
-          boxShadow: "0 15px 35px rgba(0,0,0,0.25)"
+          textAlign: "center"
         }}
       >
 
-        {loadingMerchant && (
-          <p style={{ color:"#444" }}>
-            Loading merchant...
-          </p>
-        )}
-
-        {!loadingMerchant && merchant && (
+        {merchant ? (
           <>
-            <h2 style={{ color:"#111", marginBottom:"4px" }}>
-              {merchant}
+            <h2 style={{ color: "#111" }}>
+              Pay {merchant}
             </h2>
-
-            <p style={{
-              fontSize:"12px",
-              color:"#16a34a",
-              fontWeight:"bold"
-            }}>
-              ✔ Verified PayShield Merchant
-            </p>
-
-            <p style={{
-              fontSize:"11px",
-              color:"#777",
-              marginBottom:"10px"
-            }}>
+            <p style={{ fontSize: "12px", color: "#666" }}>
               Powered by PayShield
             </p>
           </>
-        )}
-
-        {!loadingMerchant && !merchant && (
-          <p style={{ color:"red" }}>
-            Merchant not found
+        ) : (
+          <p style={{ color: "#111" }}>
+            Loading merchant...
           </p>
         )}
 
@@ -156,11 +128,9 @@ export default function PayQR() {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           style={{
-            width:"100%",
-            padding:"12px",
-            borderRadius:"8px",
-            border:"1px solid #ddd",
-            marginTop:"10px"
+            width: "100%",
+            padding: "12px",
+            marginTop: "20px"
           }}
         />
 
@@ -169,11 +139,9 @@ export default function PayQR() {
           value={reference}
           onChange={(e) => setReference(e.target.value)}
           style={{
-            width:"100%",
-            padding:"12px",
-            borderRadius:"8px",
-            border:"1px solid #ddd",
-            marginTop:"10px"
+            width: "100%",
+            padding: "12px",
+            marginTop: "10px"
           }}
         />
 
@@ -181,23 +149,20 @@ export default function PayQR() {
           onClick={handlePayment}
           disabled={loading}
           style={{
-            marginTop:"20px",
-            width:"100%",
-            padding:"14px",
-            background:"#facc15",
-            border:"none",
-            borderRadius:"10px",
-            fontWeight:"bold",
-            fontSize:"16px",
-            cursor:"pointer",
-            boxShadow:"0 4px 12px rgba(0,0,0,0.15)"
+            marginTop: "20px",
+            width: "100%",
+            padding: "12px",
+            background: "#facc15",
+            border: "none",
+            borderRadius: "8px",
+            fontWeight: "bold"
           }}
         >
           {loading ? "Redirecting..." : "Pay Now"}
         </button>
 
         {error && (
-          <p style={{ color:"red", marginTop:"10px" }}>
+          <p style={{ color: "red", marginTop: "10px" }}>
             {error}
           </p>
         )}
@@ -205,6 +170,5 @@ export default function PayQR() {
       </div>
 
     </div>
-
   );
 }
