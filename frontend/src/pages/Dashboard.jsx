@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { layout, typography } from "../theme";
 import { QRCodeCanvas } from "qrcode.react";
-
+import GoldButton from "../components/GoldButton";
 export default function Dashboard() {
 
 const navigate = useNavigate();
@@ -379,21 +379,11 @@ Download QR </button>
 
 )}
 
-<button
-onClick={() => navigate("/payments")}
-style={{
-marginTop: "30px",
-padding: "10px 16px",
-background: "#4f46e5",
-color: "white",
-border: "none",
-borderRadius: "8px",
-cursor: "pointer"
-}}
-
->
-
-View Payments </button>
+<div style={{ marginTop: "30px" }}>
+  <GoldButton onClick={() => navigate("/payments")}>
+    View Payments
+  </GoldButton>
+</div>
 
 <style>
 {`

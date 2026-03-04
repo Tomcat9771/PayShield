@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
+import GoldButton from "../components/GoldButton";
 
 export default function PaymentHistory() {
-
+const navigate = useNavigate();
 const [payments, setPayments] = useState([]);
 const [loading, setLoading] = useState(true);
 
@@ -53,7 +55,11 @@ return <div>Loading payments...</div>;
 }
 
 return (
-
+<div style={{ marginBottom: "20px" }}>
+  <GoldButton onClick={() => navigate("/dashboard")}>
+    Return to Dashboard
+  </GoldButton>
+</div>
 <div style={{ padding: "30px" }}>
 
   <h2>Payment History</h2>
