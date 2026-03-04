@@ -6,11 +6,11 @@ export default function PayQR() {
 
   const { qr_code } = useParams();
 
+  const [merchant, setMerchant] = useState(null);
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [merchant, setMerchant] = useState("");
 
   /* =============================
      LOAD MERCHANT NAME
@@ -23,6 +23,8 @@ export default function PayQR() {
       try {
 
         const res = await api.get(`/ozow/qr/${qr_code}`);
+
+        console.log("Merchant API:", res.data);
 
         setMerchant(res.data.merchant);
 
@@ -107,9 +109,7 @@ export default function PayQR() {
 
         {merchant ? (
           <>
-            <h2 style={{ marginBottom: "6px" }}>
-              Pay {merchant}
-            </h2>
+            <h2>Pay {merchant}</h2>
             <p style={{ fontSize: "12px", color: "#666" }}>
               Powered by PayShield
             </p>
