@@ -4,7 +4,6 @@ import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
 import adminRouter from "./routes/admin.js";
 
-
 /* =========================
    CREATE APP FIRST
 ========================= */
@@ -34,7 +33,7 @@ app.use(
         "http://localhost:5173",
         "http://localhost:3000",
         "https://payshield.shieldsconsulting.co.za",
-        "https://pay-shield-green.vercel.app",
+        "https://pay-shield-green.vercel.app"
       ];
 
       if (allowed.includes(origin)) {
@@ -44,11 +43,10 @@ app.use(
       console.log("❌ Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     },
-    credentials: true,
+    credentials: true
   })
 );
 
-app.use("/api/admin/documents", adminDocumentsRouter);
 /* =========================
    OZOW WEBHOOK (RAW BODY REQUIRED)
 ========================= */
@@ -58,13 +56,13 @@ app.use(
     extended: false,
     verify: (req, res, buf) => {
       req.rawBody = buf.toString("utf8");
-    },
+    }
   }),
   ozowWebhookRouter
 );
 
 /* =========================
-   BODY PARSERS (OTHER ROUTES)
+   BODY PARSERS
 ========================= */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -73,23 +71,26 @@ app.use(express.urlencoded({ extended: true }));
    ROUTES
 ========================= */
 
-// Ozow Payment Creation
+// Ozow payments (registration + QR payments)
 app.use("/api/ozow", ozowRouter);
 
-// Business Management
+// Business management
 app.use("/api/businesses", businessesRouter);
 
+// Admin routes
 app.use(
   "/api/admin/documents",
   requireAuth,
   requireAdmin,
   adminDocumentsRouter
 );
+
 app.use("/api/admin", adminRouter);
 
 /* =========================
    OZOW REDIRECT PAGES
 ========================= */
+
 function paymentPage({ title, message, color }) {
   return `
   <!DOCTYPE html>
@@ -172,7 +173,7 @@ app.get("/success.aspx", (req, res) => {
       title: "Payment Successful 🎉",
       message:
         "Your payment was processed successfully. Your account is now active.",
-      color: "#22c55e",
+      color: "#22c55e"
     })
   );
 });
@@ -183,7 +184,7 @@ app.get("/cancel.aspx", (req, res) => {
       title: "Payment Cancelled ⚠️",
       message:
         "You cancelled the payment process. No funds were deducted.",
-      color: "#f59e0b",
+      color: "#f59e0b"
     })
   );
 });
@@ -194,20 +195,23 @@ app.get("/error.aspx", (req, res) => {
       title: "Payment Error ❌",
       message:
         "Something went wrong while processing your payment. Please try again.",
-      color: "#ef4444",
+      color: "#ef4444"
     })
   );
 });
+
 /* =========================
    HEALTH CHECK
 ========================= */
+
 app.get("/health", (req, res) => {
   res.json({ status: "PayShield API running" });
 });
 
 /* =========================
-   START
+   START SERVER
 ========================= */
+
 const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {

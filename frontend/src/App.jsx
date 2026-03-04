@@ -17,6 +17,9 @@ import Layout from "./components/Layout";
 import RegistrationRejected from "./pages/RegistrationRejected";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import CheckEmail from "./pages/CheckEmail";
+import PayCustomer from "./pages/PayCustomer";
+import PayQR from "./pages/PayQR";
+
 
 
 function App() {
@@ -149,7 +152,9 @@ function App() {
       />
 <Route path="/check-email" element={<CheckEmail />} />
 <Route path="/email-confirmed" element={<EmailConfirmed />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+<Route path="/pay/:qrCode" element={<PayQR />} />
+<Route path="*" element={<Navigate to="/login" replace />} />
+<Route path="/pay/:qrCode" element={<PayCustomer />} />
     </Routes>
   );
 }
