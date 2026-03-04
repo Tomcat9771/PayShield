@@ -6,10 +6,74 @@ import { createOzowPayment } from "../services/ozowService.js";
 const router = express.Router();
 
 /* =========================================================
+   QR LOOKUP (GET MERCHANT INFO)
+========================================================= */
+
+router.get("/qr/:qr_code", async (req, res) => {
+
+  try {
+
+    const { qr_code } = req.params;
+
+    if (!qr_code.startsWith("PSQR-")) {
+      return res.status(400).json({
+        error: "Invalid QR code",
+      });
+    }
+
+    const { data: qr, error } = await supabase
+      .from("qr_codes")
+      .select(`
+        code,
+        active,
+        business_registrations (
+          business_id,
+          businesses (
+            business_name
+          )
+        )
+      `)
+      .eq("code", qr_code)
+      .single();
+
+    if (error || !qr) {
+      return res.status(404).json({
+        error: "QR not found",
+      });
+    }
+
+    if (!qr.active) {
+      return res.status(400).json({
+        error: "QR inactive",
+      });
+    }
+
+    const businessName =
+      qr.business_registrations.businesses.business_name;
+
+    return res.json({
+      merchant: businessName,
+    });
+
+  } catch (err) {
+
+    console.error("QR lookup error:", err);
+
+    return res.status(500).json({
+      error: "QR lookup failed",
+    });
+
+  }
+
+});
+
+
+/* =========================================================
    QR CUSTOMER PAYMENT
 ========================================================= */
 
 router.post("/create-payment", async (req, res) => {
+
   try {
 
     const { qr_code, amount, reference } = req.body;
@@ -38,9 +102,9 @@ router.post("/create-payment", async (req, res) => {
       });
     }
 
-    if (numericAmount > 20000) {
+    if (numericAmount > 500000) {
       return res.status(400).json({
-        error: "Maximum payment is R20,000",
+        error: "Maximum payment is R500,000",
       });
     }
 
@@ -116,83 +180,30 @@ router.post("/create-payment", async (req, res) => {
        CREATE PAYMENT RECORD
     ------------------------- */
 
-    await supabase.from("payments").insert({
-      provider: "ozow",
-      provider_reference: transactionReference,
-      business_id,
-      purpose: "qr_payment",
-      amount: numericAmount,
-      provider_status: "INITIATED",
-      processed: false,
-    });
+    const { error: insertError } = await supabase
+      .from("payments")
+      .insert({
+        provider: "ozow",
+        provider_reference: transactionReference,
+        business_id,
+        purpose: "qr_payment",
+        amount: numericAmount,
+        provider_status: "INITIATED",
+        processed: false,
+      });
+
+    if (insertError) {
+      console.error("Payment insert error:", insertError);
+      return res.status(500).json({
+        error: "Failed to create payment record",
+      });
+    }
 
     console.log("Creating Ozow QR payment:", {
       business_id,
       amount: numericAmount,
       reference: bankReference
     });
-
-/* =========================================================
-   GET MERCHANT INFO FROM QR
-========================================================= */
-
-router.get("/qr/:qr_code", async (req, res) => {
-
-  try {
-
-    const { qr_code } = req.params;
-
-    if (!qr_code.startsWith("PSQR-")) {
-      return res.status(400).json({
-        error: "Invalid QR code",
-      });
-    }
-
-    const { data: qr, error } = await supabase
-      .from("qr_codes")
-      .select(`
-        code,
-        active,
-        business_registrations (
-          business_id,
-          businesses (
-            name
-          )
-        )
-      `)
-      .eq("code", qr_code)
-      .single();
-
-    if (error || !qr) {
-      return res.status(404).json({
-        error: "QR not found",
-      });
-    }
-
-    if (!qr.active) {
-      return res.status(400).json({
-        error: "QR inactive",
-      });
-    }
-
-    const businessName =
-      qr.business_registrations.businesses.name;
-
-    return res.json({
-      merchant: businessName,
-    });
-
-  } catch (err) {
-
-    console.error("QR lookup error:", err);
-
-    return res.status(500).json({
-      error: "QR lookup failed",
-    });
-
-  }
-
-});
 
     /* -------------------------
        CREATE OZOW PAYMENT
@@ -222,7 +233,9 @@ router.get("/qr/:qr_code", async (req, res) => {
     return res.status(500).json({
       error: "QR payment failed",
     });
+
   }
+
 });
 
 export default router;
