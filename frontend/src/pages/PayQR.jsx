@@ -4,7 +4,7 @@ import api from "../api";
 
 export default function PayQR() {
 
-  const { qrCode } = useParams();
+  const { qr_code } = useParams();
 
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
@@ -16,29 +16,30 @@ export default function PayQR() {
      LOAD MERCHANT NAME
   ============================= */
 
-useEffect(() => {
+  useEffect(() => {
 
-  const loadMerchant = async () => {
+    const loadMerchant = async () => {
 
-    try {
+      try {
 
-      const res = await api.get(`/ozow/qr/${qr_code}`);
+        const res = await api.get(`/ozow/qr/${qr_code}`);
 
-      setMerchant(res.data.merchant);
+        setMerchant(res.data.merchant);
 
-    } catch (err) {
+      } catch (err) {
 
-      console.error("QR lookup failed");
+        console.error("QR lookup failed", err);
+        setError("Invalid QR code");
 
+      }
+
+    };
+
+    if (qr_code) {
+      loadMerchant();
     }
 
-  };
-
-  if (qr_code) {
-    loadMerchant();
-  }
-
-}, [qr_code]);
+  }, [qr_code]);
 
   /* =============================
      CREATE PAYMENT
@@ -58,7 +59,7 @@ useEffect(() => {
       setLoading(true);
 
       const res = await api.post("/ozow/create-payment", {
-        qr_code: qrCode,
+        qr_code,
         amount,
         reference
       });
@@ -104,21 +105,18 @@ useEffect(() => {
         }}
       >
 
-        <h2>Pay {merchant || "Merchant"}</h2>
-
         {merchant ? (
-  <>
-    <h2 style={{ marginBottom: "6px" }}>
-      Pay {merchant}
-    </h2>
-    <p style={{ fontSize: "12px", color: "#666" }}>
-      Powered by PayShield
-    </p>
-  </>
-) : (
-  <p>Loading merchant...</p>
-)}
-
+          <>
+            <h2 style={{ marginBottom: "6px" }}>
+              Pay {merchant}
+            </h2>
+            <p style={{ fontSize: "12px", color: "#666" }}>
+              Powered by PayShield
+            </p>
+          </>
+        ) : (
+          <p>Loading merchant...</p>
+        )}
 
         <input
           placeholder="Amount (ZAR)"
@@ -156,9 +154,7 @@ useEffect(() => {
             fontWeight: "bold"
           }}
         >
-
           {loading ? "Redirecting..." : "Pay Now"}
-
         </button>
 
         {error && (
