@@ -6,20 +6,13 @@ import { createOzowPayment } from "../services/ozowService.js";
 const router = express.Router();
 
 /* =========================================================
-   QR LOOKUP (GET MERCHANT INFO)
+   GET MERCHANT INFO FROM QR
 ========================================================= */
 
 router.get("/qr/:qr_code", async (req, res) => {
-
   try {
 
     const { qr_code } = req.params;
-
-    if (!qr_code.startsWith("PSQR-")) {
-      return res.status(400).json({
-        error: "Invalid QR code",
-      });
-    }
 
     const { data: qr, error } = await supabase
       .from("qr_codes")
@@ -38,13 +31,13 @@ router.get("/qr/:qr_code", async (req, res) => {
 
     if (error || !qr) {
       return res.status(404).json({
-        error: "QR not found",
+        error: "QR not found"
       });
     }
 
     if (!qr.active) {
       return res.status(400).json({
-        error: "QR inactive",
+        error: "QR inactive"
       });
     }
 
@@ -52,7 +45,7 @@ router.get("/qr/:qr_code", async (req, res) => {
       qr.business_registrations.businesses.business_name;
 
     return res.json({
-      merchant: businessName,
+      merchant: businessName
     });
 
   } catch (err) {
@@ -60,11 +53,10 @@ router.get("/qr/:qr_code", async (req, res) => {
     console.error("QR lookup error:", err);
 
     return res.status(500).json({
-      error: "QR lookup failed",
+      error: "QR lookup failed"
     });
 
   }
-
 });
 
 

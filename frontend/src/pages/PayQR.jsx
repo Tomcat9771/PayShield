@@ -11,32 +11,35 @@ export default function PayQR() {
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [merchant, setMerchant] = useState("");
 
   /* =============================
      LOAD MERCHANT NAME
   ============================= */
 
-  useEffect(() => {
+useEffect(() => {
 
-    const loadMerchant = async () => {
+  const loadMerchant = async () => {
 
-      try {
+    try {
 
-        const res = await api.get(`/ozow/qr/${qrCode}`);
+      const res = await api.get(`/ozow/qr/${qr_code}`);
 
-        setMerchant(res.data.merchant);
+      setMerchant(res.data.merchant);
 
-      } catch (err) {
+    } catch (err) {
 
-        setError("Invalid QR code");
+      console.error("QR lookup failed");
 
-      }
+    }
 
-    };
+  };
 
+  if (qr_code) {
     loadMerchant();
+  }
 
-  }, [qrCode]);
+}, [qr_code]);
 
   /* =============================
      CREATE PAYMENT
@@ -104,9 +107,19 @@ export default function PayQR() {
 
         <h2>Pay {merchant || "Merchant"}</h2>
 
-        <p style={{ fontSize: "13px", color: "#666" }}>
-          Powered by PayShield
-        </p>
+        {merchant ? (
+  <>
+    <h2 style={{ marginBottom: "6px" }}>
+      Pay {merchant}
+    </h2>
+    <p style={{ fontSize: "12px", color: "#666" }}>
+      Powered by PayShield
+    </p>
+  </>
+) : (
+  <p>Loading merchant...</p>
+)}
+
 
         <input
           placeholder="Amount (ZAR)"
