@@ -6,9 +6,7 @@ import { calculateFees } from "../../services/feeCalculator.js";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-
   try {
-
     const rawBody = req.rawBody;
 
     if (!rawBody) {
@@ -23,7 +21,6 @@ router.post("/", async (req, res) => {
     /* ======================================
        SAFE WEBHOOK LOG
     ====================================== */
-
     try {
       await supabase.from("webhook_logs").insert({
         provider: "ozow",
@@ -55,8 +52,8 @@ router.post("/", async (req, res) => {
     } = payload;
 
     console.log("Webhook Status:", Status);
+    console.log("Webhook Optional1:", Optional1);
     console.log("Webhook TransactionReference:", TransactionReference);
-    console.log("Webhook TransactionId:", TransactionId);
     console.log("Webhook Amount:", Amount);
 
     const hashString = (
@@ -100,10 +97,29 @@ router.post("/", async (req, res) => {
       return res.status(400).send("Invalid currency");
     }
 
-    const paymentReference = TransactionReference;
+    const referenceId = TransactionReference;
     const gross = Number(Amount);
+    let purpose = "qr_payment";
 
-    if (!paymentReference || !TransactionId || isNaN(gross)) {
+// Check if this business has an approved registration awaiting payment
+const { data: registration } = await supabase
+  .from("business_registrations")
+  .select("id, status, fee_paid")
+  .eq("business_id", referenceId)
+  .eq("status", "approved")
+  .eq("fee_paid", false)
+  .maybeSingle();
+
+if (registration) {
+  purpose = "registration_fee";
+}
+
+console.log("Derived purpose:", purpose);
+
+
+    console.log("Derived purpose:", purpose);
+
+    if (!referenceId || !TransactionId || isNaN(gross)) {
       console.error("Invalid required fields");
       return res.status(200).send("Ignored");
     }
@@ -118,18 +134,15 @@ router.post("/", async (req, res) => {
       case "COMPLETE":
         internalStatus = "COMPLETE";
         break;
-
       case "PENDING":
       case "PENDINGINVESTIGATION":
         internalStatus = "PENDING";
         break;
-
       case "CANCELLED":
       case "ERROR":
       case "ABANDONED":
         internalStatus = "FAILED";
         break;
-
       default:
         internalStatus = "FAILED";
     }
@@ -137,50 +150,34 @@ router.post("/", async (req, res) => {
     console.log("Internal Status:", internalStatus);
 
     /* ======================================
-       FIND EXISTING PAYMENT
+       INSERT INTO PAYMENTS (IDEMPOTENT)
     ====================================== */
 
-    const { data: paymentRow, error: paymentFetchError } =
+    const { data: paymentRow, error: paymentInsertError } =
       await supabase
         .from("payments")
-        .select("*")
-        .eq("provider_reference", paymentReference)
+        .insert({
+          provider: "ozow",
+          provider_reference: TransactionId,
+          business_id: referenceId,
+          purpose,
+          amount: gross,
+          provider_status: internalStatus,
+          raw_payload: payload,
+          processed: false,
+        })
+        .select()
         .single();
 
-    if (paymentFetchError || !paymentRow) {
+    if (paymentInsertError) {
+      if (paymentInsertError.code === "23505") {
+        console.log("🔒 Payment already processed");
+        return res.status(200).send("Already processed");
+      }
 
-      console.error("Payment not found for reference:", paymentReference);
-
-      return res.status(200).send("Payment not found");
+      console.error("Payment insert error:", paymentInsertError);
+      return res.status(500).send("Insert failed");
     }
-
-    /* ======================================
-       IDEMPOTENCY CHECK
-    ====================================== */
-
-    if (paymentRow.processed) {
-
-      console.log("🔒 Payment already processed");
-
-      return res.status(200).send("Already processed");
-    }
-
-    /* ======================================
-       UPDATE PAYMENT
-    ====================================== */
-
-    await supabase
-      .from("payments")
-      .update({
-        provider_status: internalStatus,
-        ozow_transaction_id: TransactionId,
-        ozow_status_message: StatusMessage,
-        raw_payload: payload
-      })
-      .eq("id", paymentRow.id);
-
-    const businessId = paymentRow.business_id;
-    const purpose = paymentRow.purpose;
 
     /* ======================================
        REGISTRATION FEE HANDLING
@@ -190,11 +187,16 @@ router.post("/", async (req, res) => {
 
       console.log("Registration fee payment detected");
 
-      const { data: feeConfig } = await supabase
+      const { data: feeConfig, error: feeError } = await supabase
         .from("platform_config")
         .select("value")
         .eq("key", "registration_fee")
         .single();
+
+      if (feeError || !feeConfig) {
+        console.error("Registration fee config missing");
+        return res.status(500).send("Fee config error");
+      }
 
       const expectedFee = Number(feeConfig.value);
 
@@ -205,25 +207,31 @@ router.post("/", async (req, res) => {
 
       if (internalStatus === "COMPLETE") {
 
+        console.log("🔄 Processing registration completion...");
+
         const { error: rpcError } = await supabase.rpc(
           "complete_registration_payment",
           {
-            p_business_id: businessId,
+            p_business_id: referenceId,
             p_transaction_id: TransactionId,
             p_amount: gross,
           }
         );
 
         if (rpcError) {
-          console.error("Activation RPC failed:", rpcError.message);
+          console.error("❌ Activation RPC failed:", rpcError.message);
+          return res.status(500).send("Activation failed");
         }
 
-        console.log("🟢 Registration completed");
+        console.log("🟢 Registration completed & business activated safely");
       }
 
     } else {
-
       console.log("QR payment branch triggered");
+
+      /* ======================================
+         QR PAYMENT LOGIC
+      ====================================== */
 
       const { data: existing } = await supabase
         .from("transactions")
@@ -231,12 +239,50 @@ router.post("/", async (req, res) => {
         .eq("provider_ref", TransactionId)
         .maybeSingle();
 
-      if (!existing && internalStatus === "COMPLETE") {
+      if (!existing) {
 
-        const fee = await calculateFees(gross, businessId);
+        if (internalStatus !== "COMPLETE") {
+
+          await supabase.from("transactions").insert({
+            business_id: referenceId,
+            provider_ref: TransactionId,
+            provider: "ozow",
+            status: internalStatus,
+            amount_gross: gross,
+            amount_net: 0,
+            ozow_fee: 0,
+            ozow_vat: 0,
+            platform_fee: 0,
+            platform_vat: 0,
+            payout_fee: 0,
+          });
+
+        } else {
+
+          const fee = await calculateFees(gross, referenceId);
+
+          await supabase.rpc("process_ozow_payment", {
+            p_business_id: referenceId,
+            p_provider_ref: TransactionId,
+            p_amount_gross: fee.amount_gross,
+            p_ozow_fee: fee.ozow_fee,
+            p_ozow_vat: fee.ozow_vat,
+            p_platform_fee: fee.platform_fee,
+            p_platform_vat: fee.platform_vat,
+            p_payout_fee: fee.payout_fee,
+            p_amount_net: fee.amount_net,
+          });
+        }
+
+      } else if (
+        existing.status !== "COMPLETE" &&
+        internalStatus === "COMPLETE"
+      ) {
+
+        const fee = await calculateFees(gross, referenceId);
 
         await supabase.rpc("process_ozow_payment", {
-          p_business_id: businessId,
+          p_business_id: referenceId,
           p_provider_ref: TransactionId,
           p_amount_gross: fee.amount_gross,
           p_ozow_fee: fee.ozow_fee,
@@ -247,31 +293,29 @@ router.post("/", async (req, res) => {
           p_amount_net: fee.amount_net,
         });
 
+      } else if (existing.status !== internalStatus) {
+
+        await supabase
+          .from("transactions")
+          .update({ status: internalStatus })
+          .eq("provider_ref", TransactionId);
       }
     }
-
-    /* ======================================
-       MARK PAYMENT PROCESSED
-    ====================================== */
 
     await supabase
       .from("payments")
       .update({
         processed: true,
-        processed_at: new Date()
+        processed_at: new Date(),
       })
       .eq("id", paymentRow.id);
 
     return res.status(200).send("OK");
 
   } catch (err) {
-
     console.error("❌ Webhook error:", err.message);
-
     return res.status(200).send("OK");
-
   }
-
 });
 
 export default router;

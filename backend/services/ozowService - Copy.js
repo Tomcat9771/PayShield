@@ -15,9 +15,8 @@ function generateHash({
   successUrl,
   notifyUrl,
   isTest,
-  privateKey,
+    privateKey,
 }) {
-
   let inputString =
     siteCode +
     countryCode +
@@ -33,6 +32,7 @@ function generateHash({
 
   inputString += privateKey;
 
+  
   return crypto
     .createHash("sha512")
     .update(inputString.toLowerCase())
@@ -43,10 +43,7 @@ export async function createOzowPayment({
   amount,
   transactionReference,
   bankReference,
-  businessId,
-  purpose = "qr_payment",
 }) {
-
   const siteCode = process.env.OZOW_SITE_CODE?.trim();
   const apiKey = process.env.OZOW_API_KEY?.trim();
   const privateKey = process.env.OZOW_PRIVATE_KEY?.trim();
@@ -64,17 +61,18 @@ export async function createOzowPayment({
   const successUrl = process.env.OZOW_SUCCESS_URL?.trim();
   const notifyUrl = process.env.OZOW_NOTIFY_URL?.trim();
 
+  
   if (!cancelUrl || !errorUrl || !successUrl || !notifyUrl) {
     throw new Error("Ozow redirect URLs not configured");
   }
 
   const numericAmount = Number(amount);
-
   if (isNaN(numericAmount)) {
     throw new Error("Invalid amount supplied to Ozow");
   }
 
   const formattedAmount = numericAmount.toFixed(2);
+  const optional1 = "registration_fee";
 
   const hashCheck = generateHash({
     siteCode,
@@ -104,11 +102,6 @@ export async function createOzowPayment({
     notifyUrl,
     isTest,
     hashCheck,
-
-    // CONTEXT FIELDS (VERY IMPORTANT)
-    optional1: businessId,
-    optional2: purpose,
-    optional3: transactionReference,
   };
 
   const apiUrl = isTest
@@ -128,7 +121,7 @@ export async function createOzowPayment({
   const data = await response.json();
 
   if (!response.ok || data.errorMessage) {
-    throw new Error(data.errorMessage || "Ozow payment failed");
+      throw new Error(data.errorMessage || "Ozow payment failed");
   }
 
   return data;

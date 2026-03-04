@@ -237,10 +237,12 @@ router.post("/create-payment", async (req, res) => {
     ------------------------- */
 
     const ozowResponse = await createOzowPayment({
-      amount: numericAmount,
-      transactionReference,
-      bankReference,
-    });
+  amount: numericAmount,
+  transactionReference,
+  bankReference,
+  businessId: business_id,
+  purpose: "qr_payment",
+});
 
     if (!ozowResponse?.url) {
       return res.status(500).json({
