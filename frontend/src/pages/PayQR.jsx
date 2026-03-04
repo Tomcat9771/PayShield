@@ -6,7 +6,6 @@ export default function PayQR() {
 
   const { qrCode } = useParams();
 
-  const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
