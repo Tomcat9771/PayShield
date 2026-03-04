@@ -5,114 +5,117 @@ import { useNavigate } from "react-router-dom";
 import GoldButton from "../components/GoldButton";
 
 export default function PaymentHistory() {
-const navigate = useNavigate();
-const [payments, setPayments] = useState([]);
-const [loading, setLoading] = useState(true);
 
-useEffect(() => {
+  const navigate = useNavigate();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const loadPayments = async () => {
+  useEffect(() => {
 
-  try {
+    const loadPayments = async () => {
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
+      try {
 
-    if (!user) return;
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData?.user;
 
-    const { data: business } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
+        if (!user) return;
 
-    if (!business) return;
+        const { data: business } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
 
-    const res = await api.get(
-      `/businesses/${business.id}/payments`
-    );
+        if (!business) return;
 
-    setPayments(res.data);
+        const res = await api.get(
+          `/businesses/${business.id}/payments`
+        );
 
-  } catch (err) {
+        setPayments(res.data);
 
-    console.error(err);
+      } catch (err) {
 
-  } finally {
+        console.error(err);
 
-    setLoading(false);
+      } finally {
 
+        setLoading(false);
+
+      }
+
+    };
+
+    loadPayments();
+
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: "30px" }}>Loading payments...</div>;
   }
 
-};
+  return (
 
-loadPayments();
+    <div style={{ padding: "30px" }}>
 
-}, []);
+      <div style={{ marginBottom: "20px" }}>
+        <GoldButton onClick={() => navigate("/dashboard")}>
+          Return to Dashboard
+        </GoldButton>
+      </div>
 
-if (loading) {
-return <div>Loading payments...</div>;
-}
+      <h2>Payment History</h2>
 
-return (
-<div style={{ marginBottom: "20px" }}>
-  <GoldButton onClick={() => navigate("/dashboard")}>
-    Return to Dashboard
-  </GoldButton>
-</div>
-<div style={{ padding: "30px" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "20px"
+        }}
+      >
 
-  <h2>Payment History</h2>
+        <thead>
+          <tr style={{ background: "#eee" }}>
+            <th style={{ padding: "10px" }}>Date</th>
+            <th style={{ padding: "10px" }}>Amount</th>
+            <th style={{ padding: "10px" }}>Reference</th>
+            <th style={{ padding: "10px" }}>Status</th>
+          </tr>
+        </thead>
 
-  <table
-    style={{
-      width: "100%",
-      borderCollapse: "collapse",
-      marginTop: "20px"
-    }}
-  >
+        <tbody>
 
-    <thead>
-      <tr style={{ background: "#eee" }}>
-        <th style={{ padding: "10px" }}>Date</th>
-        <th style={{ padding: "10px" }}>Amount</th>
-        <th style={{ padding: "10px" }}>Reference</th>
-        <th style={{ padding: "10px" }}>Status</th>
-      </tr>
-    </thead>
+          {payments.map((p) => (
 
-    <tbody>
+            <tr key={p.id} style={{ borderBottom: "1px solid #ddd" }}>
 
-      {payments.map((p) => (
+              <td style={{ padding: "10px" }}>
+                {new Date(p.created_at).toLocaleString()}
+              </td>
 
-        <tr key={p.id} style={{ borderBottom: "1px solid #ddd" }}>
+              <td style={{ padding: "10px" }}>
+                R{Number(p.amount_gross).toFixed(2)}
+              </td>
 
-          <td style={{ padding: "10px" }}>
-            {new Date(p.created_at).toLocaleString()}
-          </td>
+              <td style={{ padding: "10px" }}>
+                {p.provider_ref || "-"}
+              </td>
 
-          <td style={{ padding: "10px" }}>
-            R{Number(p.amount_gross).toFixed(2)}
-          </td>
+              <td style={{ padding: "10px" }}>
+                {p.status}
+              </td>
 
-          <td style={{ padding: "10px" }}>
-            {p.provider_ref || "-"}
-          </td>
+            </tr>
 
-          <td style={{ padding: "10px" }}>
-            {p.status}
-          </td>
+          ))}
 
-        </tr>
+        </tbody>
 
-      ))}
+      </table>
 
-    </tbody>
+    </div>
 
-  </table>
-
-</div>
-
-);
+  );
 
 }
