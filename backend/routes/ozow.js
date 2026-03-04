@@ -10,9 +10,16 @@ const router = express.Router();
 ========================================================= */
 
 router.get("/qr/:qr_code", async (req, res) => {
+
   try {
 
     const { qr_code } = req.params;
+
+    if (!qr_code) {
+      return res.status(400).json({
+        error: "QR code required"
+      });
+    }
 
     const { data: qr, error } = await supabase
       .from("qr_codes")
@@ -30,6 +37,7 @@ router.get("/qr/:qr_code", async (req, res) => {
       .single();
 
     if (error || !qr) {
+      console.log("QR lookup failed:", qr_code);
       return res.status(404).json({
         error: "QR not found"
       });
@@ -41,11 +49,17 @@ router.get("/qr/:qr_code", async (req, res) => {
       });
     }
 
-    const businessName =
-      qr.business_registrations.businesses.business_name;
+    const merchant =
+      qr?.business_registrations?.businesses?.business_name;
+
+    if (!merchant) {
+      return res.status(404).json({
+        error: "Merchant not found"
+      });
+    }
 
     return res.json({
-      merchant: businessName
+      merchant
     });
 
   } catch (err) {
@@ -57,6 +71,7 @@ router.get("/qr/:qr_code", async (req, res) => {
     });
 
   }
+
 });
 
 
@@ -140,7 +155,14 @@ router.post("/create-payment", async (req, res) => {
       });
     }
 
-    const business_id = qr.business_registrations.business_id;
+    const business_id =
+      qr?.business_registrations?.business_id;
+
+    if (!business_id) {
+      return res.status(404).json({
+        error: "Merchant not linked to QR"
+      });
+    }
 
     /* -------------------------
        VERIFY BUSINESS ACTIVE
@@ -185,10 +207,13 @@ router.post("/create-payment", async (req, res) => {
       });
 
     if (insertError) {
+
       console.error("Payment insert error:", insertError);
+
       return res.status(500).json({
         error: "Failed to create payment record",
       });
+
     }
 
     console.log("Creating Ozow QR payment:", {
