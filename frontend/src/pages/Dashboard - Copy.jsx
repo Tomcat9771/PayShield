@@ -194,75 +194,44 @@ supabase.removeChannel(realtimeChannel);
 
 }, [navigate]);
 
-const downloadQR = async () => {
+const downloadQR = () => {
 
-  const qrCanvas = document.getElementById("merchantQR");
+const canvas = document.getElementById("merchantQR");
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+const pngUrl = canvas
+.toDataURL("image/png")
+.replace("image/png", "image/octet-stream");
 
-  canvas.width = 900;
-  canvas.height = 1100;
+const safeName = businessName
+.toLowerCase()
+.replace(/[^a-z0-9]/g, "-");
 
-  // background
-  ctx.fillStyle = "#f5f5f5";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+const fileName = `${safeName}-qr.png`;
 
-  // border
-  ctx.strokeStyle = "#5b2c83";
-  ctx.lineWidth = 12;
-  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+const downloadLink = document.createElement("a");
 
-  // load logo
-  const logo = new Image();
-  logo.src = "/payshield-logo.png";
+downloadLink.href = pngUrl;
+downloadLink.download = fileName;
 
-  logo.onload = () => {
-
-    ctx.drawImage(logo, 350, 70, 200, 200);
-
-    // draw QR
-    ctx.drawImage(qrCanvas, 200, 330, 500, 500);
-
-    // company name
-    ctx.fillStyle = "#1f2937";
-    ctx.font = "bold 48px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      businessName,
-      canvas.width / 2,
-      900
-    );
-
-    // footer
-    ctx.fillStyle = "#666";
-    ctx.font = "28px Arial";
-    ctx.fillText(
-      "Hosted by Shields Consulting",
-      canvas.width / 2,
-      980
-    );
-
-    ctx.fillText(
-      "www.shieldsconsulting.co.za",
-      canvas.width / 2,
-      1020
-    );
-
-    const link = document.createElement("a");
-
-    const safeName = businessName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-");
-
-    link.download = `${safeName}-payshield-qr.png`;
-    link.href = canvas.toDataURL("image/png");
-
-    link.click();
-
-  };
+document.body.appendChild(downloadLink);
+downloadLink.click();
+document.body.removeChild(downloadLink);
 
 };
+
+if (loading) {
+return <div style={layout.contentWrapper}>Loading...</div>;
+}
+
+return (
+
+<div style={layout.contentWrapper}>
+
+<h1 style={typography.heading}>Dashboard</h1>
+
+<p style={typography.text}>
+Welcome {businessName}
+</p>
 
 {/* =========================
 LIVE PAYMENT POPUP
