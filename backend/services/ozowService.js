@@ -18,7 +18,7 @@ function generateHash({
   privateKey,
 }) {
 
-  const hashString =
+  let inputString =
     siteCode +
     countryCode +
     currencyCode +
@@ -29,12 +29,13 @@ function generateHash({
     errorUrl +
     successUrl +
     notifyUrl +
-    isTest +
-    privateKey;
+    String(isTest);
+
+  inputString += privateKey;
 
   return crypto
     .createHash("sha512")
-    .update(hashString)
+    .update(inputString.toLowerCase())   // REQUIRED BY OZOW
     .digest("hex");
 }
 
@@ -75,8 +76,6 @@ export async function createOzowPayment({
 
   const formattedAmount = numericAmount.toFixed(2);
 
-  const isTestString = isTest ? "true" : "false";
-
   const hashCheck = generateHash({
     siteCode,
     countryCode,
@@ -88,28 +87,28 @@ export async function createOzowPayment({
     errorUrl,
     successUrl,
     notifyUrl,
-    isTest: isTestString,
+    isTest,
     privateKey,
   });
 
   const payload = {
-    SiteCode: siteCode,
-    CountryCode: countryCode,
-    CurrencyCode: currencyCode,
-    Amount: formattedAmount,
-    TransactionReference: transactionReference,
-    BankReference: bankReference,
-    CancelUrl: cancelUrl,
-    ErrorUrl: errorUrl,
-    SuccessUrl: successUrl,
-    NotifyUrl: notifyUrl,
-    IsTest: isTestString,
-    HashCheck: hashCheck,
+    siteCode,
+    countryCode,
+    currencyCode,
+    amount: formattedAmount,
+    transactionReference,
+    bankReference,
+    cancelUrl,
+    errorUrl,
+    successUrl,
+    notifyUrl,
+    isTest,
+    hashCheck,
 
-    // Optional context fields
-    Optional1: businessId,
-    Optional2: purpose,
-    Optional3: transactionReference,
+    // optional metadata
+    optional1: businessId,
+    optional2: purpose,
+    optional3: transactionReference,
   };
 
   const apiUrl = isTest
@@ -134,3 +133,4 @@ export async function createOzowPayment({
 
   return data;
 }
+
