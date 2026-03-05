@@ -213,7 +213,7 @@ router.get("/payment/:transactionId", async (req, res) => {
     const { data, error } = await supabase
       .from("payments")
       .select("customer_reference")
-      .eq("provider_reference", transactionId)
+      .eq("ozow_transaction_id", transactionId)
       .single();
 
     if (error || !data) {
