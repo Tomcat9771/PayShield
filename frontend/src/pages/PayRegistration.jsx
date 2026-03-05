@@ -43,7 +43,7 @@ const handlePayment = async () => {
   try {
     setError("");
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ozow/create-registration`, {
+    const response = await fetch(`${API_BASE}/api/ozow/registration/create-payment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

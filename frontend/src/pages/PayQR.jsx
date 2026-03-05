@@ -60,7 +60,7 @@ export default function PayQR() {
 
       setLoading(true);
 
-      const res = await api.post("/ozow/create-payment", {
+      const res = await api.post("/ozow/qr/create-payment", {
         qr_code: qrCode,
         amount,
         reference
