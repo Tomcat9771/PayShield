@@ -20,7 +20,9 @@ import CheckEmail from "./pages/CheckEmail";
 import PayCustomer from "./pages/PayCustomer";
 import PayQR from "./pages/PayQR";
 import PaymentHistory from "./pages/PaymentHistory";
-
+import QrSuccess from "./pages/QrSuccess";
+import QrCancel from "./pages/QrCancel";
+import QrError from "./pages/QrError";
 
 
 function App() {
@@ -167,6 +169,9 @@ function App() {
 <Route path="/pay/:qrCode" element={<PayQR />} />
 <Route path="*" element={<Navigate to="/login" replace />} />
 <Route path="/pay/:qrCode" element={<PayCustomer />} />
+<Route path="/qr-success" element={<QrSuccess />} />
+<Route path="/qr-cancel" element={<QrCancel />} />
+<Route path="/qr-error" element={<QrError />} />
     </Routes>
   );
 }
