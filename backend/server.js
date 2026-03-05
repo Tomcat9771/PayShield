@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import adminDocumentsRouter from "./routes/adminDocuments.js";
 import adminRouter from "./routes/admin.js";
+import qrPayments from "./routes/ozow/qrPayments.js";
+import registrationPayments from "./routes/ozow/registrationPayments.js";
+import ozowWebhook from "./routes/ozow/webhook.js";
 
 /* =========================
    CREATE APP FIRST
@@ -86,7 +89,9 @@ app.use(
 );
 
 app.use("/api/admin", adminRouter);
-
+app.use("/api/ozow/qr", qrPayments);
+app.use("/api/ozow/registration", registrationPayments);
+app.use("/api/webhooks/ozow", ozowWebhook);
 /* =========================
    OZOW REDIRECT PAGES
 ========================= */
