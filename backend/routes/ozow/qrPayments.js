@@ -205,7 +205,6 @@ router.post("/create", async (req, res) => {
 =============================== */
 
 router.get("/payment/:transactionId", async (req, res) => {
-
   try {
 
     const { transactionId } = req.params;
@@ -233,9 +232,7 @@ router.get("/payment/:transactionId", async (req, res) => {
     });
 
   }
-
 });
-
 
 export default router;
 
