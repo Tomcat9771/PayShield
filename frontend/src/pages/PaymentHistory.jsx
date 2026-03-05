@@ -95,15 +95,135 @@ export default function PaymentHistory() {
               </td>
 
               <td style={{ padding: "10px" }}>
-                R{Number(p.amount_gross).toFixed(2)}
+                R{Number(p.amount).toFixed(2)}
               </td>
 
               <td style={{ padding: "10px" }}>
-  {p.customer_reference || p.provider_ref || "-"}
-</td>
+                {p.customer_reference || "-"}
+              </td>
 
               <td style={{ padding: "10px" }}>
-                {p.status}
+                {p.provider_status}
+              </td>
+
+            </tr>
+
+          ))}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  );
+
+}import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+import api from "../api";
+import { useNavigate } from "react-router-dom";
+import GoldButton from "../components/GoldButton";
+
+export default function PaymentHistory() {
+
+  const navigate = useNavigate();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+
+    const loadPayments = async () => {
+
+      try {
+
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData?.user;
+
+        if (!user) return;
+
+        const { data: business } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!business) return;
+
+        const res = await api.get(
+          `/businesses/${business.id}/payments`
+        );
+
+        setPayments(res.data);
+
+      } catch (err) {
+
+        console.error(err);
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+    loadPayments();
+
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: "30px" }}>Loading payments...</div>;
+  }
+
+  return (
+
+    <div style={{ padding: "30px" }}>
+
+      <div style={{ marginBottom: "20px" }}>
+        <GoldButton onClick={() => navigate("/dashboard")}>
+          Return to Dashboard
+        </GoldButton>
+      </div>
+
+      <h2>Payment History</h2>
+
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "20px"
+        }}
+      >
+
+        <thead>
+          <tr style={{ background: "#eee" }}>
+            <th style={{ padding: "10px" }}>Date</th>
+            <th style={{ padding: "10px" }}>Amount</th>
+            <th style={{ padding: "10px" }}>Reference</th>
+            <th style={{ padding: "10px" }}>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {payments.map((p) => (
+
+            <tr key={p.id} style={{ borderBottom: "1px solid #ddd" }}>
+
+              <td style={{ padding: "10px" }}>
+                {new Date(p.created_at).toLocaleString()}
+              </td>
+
+              <td style={{ padding: "10px" }}>
+                R{Number(p.amount).toFixed(2)}
+              </td>
+
+              <td style={{ padding: "10px" }}>
+                {p.customer_reference || "-"}
+              </td>
+
+              <td style={{ padding: "10px" }}>
+                {p.provider_status}
               </td>
 
             </tr>
