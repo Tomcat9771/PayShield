@@ -200,6 +200,41 @@ router.post("/create", async (req, res) => {
   }
 
 });
+/* ===============================
+   GET PAYMENT BY OZOW TRANSACTION
+=============================== */
+
+router.get("/payment/:transactionId", async (req, res) => {
+
+  try {
+
+    const { transactionId } = req.params;
+
+    const { data, error } = await supabase
+      .from("payments")
+      .select("customer_reference")
+      .eq("provider_reference", transactionId)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        error: "Payment not found"
+      });
+    }
+
+    return res.json(data);
+
+  } catch (err) {
+
+    console.error("Payment lookup error:", err);
+
+    return res.status(500).json({
+      error: "Failed to load payment"
+    });
+
+  }
+
+});
 
 export default router;
 
