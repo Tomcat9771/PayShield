@@ -43,7 +43,6 @@ export async function createOzowPayment({
   amount,
   transactionReference,
   bankReference,
-  businessId,
   purpose = "qr_payment"
 }) {
 
@@ -63,21 +62,21 @@ export async function createOzowPayment({
      REDIRECT URLS
   ============================= */
 
-  let successUrl;
   let cancelUrl;
   let errorUrl;
+  let successUrl;
 
   if (purpose === "registration_fee") {
 
-    successUrl = process.env.OZOW_SUCCESS_URL;
-    cancelUrl = process.env.OZOW_CANCEL_URL;
-    errorUrl = process.env.OZOW_ERROR_URL;
+    cancelUrl = process.env.OZOW_CANCEL_URL?.trim();
+    errorUrl = process.env.OZOW_ERROR_URL?.trim();
+    successUrl = process.env.OZOW_SUCCESS_URL?.trim();
 
   } else {
 
-    successUrl = `${process.env.FRONTEND_URL}/qr-success`;
     cancelUrl = `${process.env.FRONTEND_URL}/qr-cancel`;
     errorUrl = `${process.env.FRONTEND_URL}/qr-error`;
+    successUrl = `${process.env.FRONTEND_URL}/qr-success`;
 
   }
 
@@ -86,10 +85,6 @@ export async function createOzowPayment({
   if (!cancelUrl || !errorUrl || !successUrl || !notifyUrl) {
     throw new Error("Ozow redirect URLs not configured");
   }
-
-  /* =============================
-     VALIDATE AMOUNT
-  ============================= */
 
   const numericAmount = Number(amount);
 
@@ -118,10 +113,6 @@ export async function createOzowPayment({
     privateKey,
   });
 
-  /* =============================
-     REQUEST PAYLOAD
-  ============================= */
-
   const payload = {
     siteCode,
     countryCode,
@@ -135,10 +126,6 @@ export async function createOzowPayment({
     notifyUrl,
     isTest,
     hashCheck,
-
-    // Optional metadata (helps webhook logic)
-    optional1: businessId || "",
-    optional2: purpose || "",
   };
 
   const apiUrl = isTest
