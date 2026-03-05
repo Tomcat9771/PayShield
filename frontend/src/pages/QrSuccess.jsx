@@ -1,27 +1,32 @@
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export default function QrSuccess() {
 
   const [params] = useSearchParams();
 
-  const transactionId = params.get("TransactionId");
+  const [transactionId, setTransactionId] = useState("");
+  const [reference, setReference] = useState("");
+
   useEffect(() => {
 
-  const loadPayment = async () => {
+    setTransactionId(params.get("TransactionId"));
+    setReference(params.get("TransactionReference"));
 
-    const res = await api.get(`/payments/${transactionId}`);
+    /* CLEAN URL */
 
-    setReference(res.data.customer_reference);
+    if (window.location.search) {
+      window.history.replaceState(
+        {},
+        document.title,
+        "/qr-success"
+      );
+    }
 
-  };
-
-  if (transactionId) {
-    loadPayment();
-  }
-
-}, []);
+  }, []);
 
   return (
+
     <div style={{
       minHeight: "100vh",
       display: "flex",
@@ -29,6 +34,7 @@ export default function QrSuccess() {
       alignItems: "center",
       background: "#3b0764"
     }}>
+
       <div style={{
         background: "white",
         padding: "40px",
@@ -37,35 +43,39 @@ export default function QrSuccess() {
         width: "420px"
       }}>
 
-        <h2 style={{ color: "#16a34a", marginBottom: "20px" }}>
+        <h2 style={{ color: "#16a34a" }}>
           Payment Successful
         </h2>
 
-        <p style={{ color: "#333", fontWeight: "bold" }}>
+        <p style={{ marginTop: "20px", color:"#333" }}>
           Transaction ID
         </p>
 
-        <p style={{ color: "#1f2937", wordBreak: "break-all" }}>
+        <strong style={{ color:"#111" }}>
           {transactionId}
-        </p>
+        </strong>
 
-        <p style={{ color: "#333", fontWeight: "bold", marginTop: "15px" }}>
+        <p style={{ marginTop: "15px", color:"#333" }}>
           Reference
         </p>
 
-        <p style={{ color: "#1f2937", wordBreak: "break-all" }}>
+        <strong style={{ color:"#111" }}>
           {reference}
-        </p>
+        </strong>
 
         <p style={{
           fontSize: "12px",
-          marginTop: "25px",
+          marginTop: "20px",
           color: "#777"
         }}>
           Powered by PayShield
         </p>
 
       </div>
+
     </div>
+
   );
+
 }
+
