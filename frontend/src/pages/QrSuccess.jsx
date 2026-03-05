@@ -22,23 +22,32 @@ export default function QrSuccess() {
         textAlign: "center",
         width: "420px"
       }}>
-        <h2 style={{ color: "#16a34a" }}>
+
+        <h2 style={{ color: "#16a34a", marginBottom: "20px" }}>
           Payment Successful
         </h2>
 
-        <p style={{ marginTop: "15px" }}>
-          Transaction ID:
+        <p style={{ color: "#333", fontWeight: "bold" }}>
+          Transaction ID
         </p>
 
-        <strong>{transactionId}</strong>
-
-        <p style={{ marginTop: "10px" }}>
-          Reference:
+        <p style={{ color: "#1f2937", wordBreak: "break-all" }}>
+          {transactionId}
         </p>
 
-        <strong>{reference}</strong>
+        <p style={{ color: "#333", fontWeight: "bold", marginTop: "15px" }}>
+          Reference
+        </p>
 
-        <p style={{ fontSize: "12px", marginTop: "20px", color: "#777" }}>
+        <p style={{ color: "#1f2937", wordBreak: "break-all" }}>
+          {reference}
+        </p>
+
+        <p style={{
+          fontSize: "12px",
+          marginTop: "25px",
+          color: "#777"
+        }}>
           Powered by PayShield
         </p>
 
@@ -46,4 +55,3 @@ export default function QrSuccess() {
     </div>
   );
 }
-
