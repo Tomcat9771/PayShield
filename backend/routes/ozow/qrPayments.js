@@ -130,7 +130,7 @@ router.post("/create", async (req, res) => {
 
     const transactionReference = crypto.randomUUID();
 
-    const customerReference = reference || null;
+    const customerReference = reference?.substring(0,30) || null;
 
     const bankReference =
       reference?.substring(0, 20) ||
@@ -213,7 +213,7 @@ router.get("/payment/:transactionId", async (req, res) => {
     const { data, error } = await supabase
       .from("payments")
       .select("customer_reference")
-      .eq("ozow_transaction_id", transactionId)
+      .eq("provider_reference", transactionId)
       .single();
 
     if (error || !data) {
