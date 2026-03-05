@@ -27,14 +27,21 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
       const allowed = [
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://payshield.shieldsconsulting.co.za",
-        "https://pay-shield-green.vercel.app"
+        "https://payshield.shieldsconsulting.co.za"
       ];
 
-      if (allowed.includes(origin)) {
+      if (
+        allowed.includes(origin) ||
+        origin.includes(".vercel.app")
+      ) {
         return callback(null, true);
       }
 
