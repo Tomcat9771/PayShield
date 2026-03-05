@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import api from "../api";
 
 export default function PayRegistration() {
+
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+
     const loadBusiness = async () => {
+
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
 
@@ -34,38 +38,37 @@ export default function PayRegistration() {
 
       setBusiness(data);
       setLoading(false);
+
     };
 
     loadBusiness();
+
   }, []);
 
-const handlePayment = async () => {
-  try {
-    setError("");
+  const handlePayment = async () => {
 
-    const response = await fetch(`${API_BASE}/api/ozow/registration/create-payment`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    try {
+
+      setError("");
+
+      const res = await api.post("/ozow/registration/create-payment", {
         business_id: business.id
-      })
-    });
+      });
 
-    const result = await response.json();
+      if (!res.data?.paymentUrl) {
+        throw new Error("Payment initialization failed");
+      }
 
-    if (!response.ok || !result.paymentUrl) {
-      throw new Error(result.error || "Payment initialization failed");
+      window.location.href = res.data.paymentUrl;
+
+    } catch (err) {
+
+      console.error(err);
+      setError("Failed to start payment. Please try again.");
+
     }
 
-    window.location.href = result.paymentUrl;
-
-  } catch (err) {
-    console.error(err);
-    setError("Failed to start payment. Please try again.");
-  }
-};
+  };
 
   if (loading) {
     return <div style={{ padding: 30 }}>Loading...</div>;
@@ -88,6 +91,8 @@ const handlePayment = async () => {
       </button>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
+
     </div>
   );
 }
+
