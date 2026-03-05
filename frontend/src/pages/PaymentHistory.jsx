@@ -29,9 +29,7 @@ export default function PaymentHistory() {
 
         if (!business) return;
 
-        const res = await api.get(
-          `/businesses/${business.id}/payments`
-        );
+        const res = await api.get(`/businesses/${business.id}/payments`);
 
         setPayments(res.data);
 
@@ -78,7 +76,10 @@ export default function PaymentHistory() {
         <thead>
           <tr style={{ background: "#eee" }}>
             <th style={{ padding: "10px" }}>Date</th>
-            <th style={{ padding: "10px" }}>Amount</th>
+            <th style={{ padding: "10px" }}>Time</th>
+            <th style={{ padding: "10px" }}>Gross Amount</th>
+            <th style={{ padding: "10px" }}>Platform Fees</th>
+            <th style={{ padding: "10px" }}>Net Amount</th>
             <th style={{ padding: "10px" }}>Reference</th>
             <th style={{ padding: "10px" }}>Status</th>
           </tr>
@@ -86,29 +87,51 @@ export default function PaymentHistory() {
 
         <tbody>
 
-          {payments.map((p) => (
+          {payments.map((p) => {
 
-            <tr key={p.id} style={{ borderBottom: "1px solid #ddd" }}>
+            const dateObj = new Date(p.created_at);
 
-              <td style={{ padding: "10px" }}>
-                {new Date(p.created_at).toLocaleString()}
-              </td>
+            const gross = Number(p.amount_gross || p.amount || 0);
+            const platformFee = Number(p.platform_fee || 0);
+            const net = Number(p.amount_net || 0);
 
-              <td style={{ padding: "10px" }}>
-                R{Number(p.amount).toFixed(2)}
-              </td>
+            return (
 
-              <td style={{ padding: "10px" }}>
-                {p.customer_reference || "-"}
-              </td>
+              <tr key={p.id} style={{ borderBottom: "1px solid #ddd" }}>
 
-              <td style={{ padding: "10px" }}>
-                {p.provider_status}
-              </td>
+                <td style={{ padding: "10px" }}>
+                  {dateObj.toLocaleDateString()}
+                </td>
 
-            </tr>
+                <td style={{ padding: "10px" }}>
+                  {dateObj.toLocaleTimeString()}
+                </td>
 
-          ))}
+                <td style={{ padding: "10px" }}>
+                  R{gross.toFixed(2)}
+                </td>
+
+                <td style={{ padding: "10px" }}>
+                  R{platformFee.toFixed(2)}
+                </td>
+
+                <td style={{ padding: "10px" }}>
+                  R{net.toFixed(2)}
+                </td>
+
+                <td style={{ padding: "10px" }}>
+                  {p.customer_reference || "Walk-in"}
+                </td>
+
+                <td style={{ padding: "10px" }}>
+                  {p.provider_status || p.status}
+                </td>
+
+              </tr>
+
+            );
+
+          })}
 
         </tbody>
 
