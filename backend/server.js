@@ -147,6 +147,61 @@ app.get("/error.aspx", (req, res) => {
 });
 
 /* =========================
+   QR PAYMENT REDIRECT PAGES
+========================= */
+
+app.get("/qr-success", (req, res) => {
+  res.send(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Payment Successful | PayShield</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="font-family:Arial;text-align:center;padding-top:100px;background:#4b0082;color:white">
+    <h1 style="color:#22c55e">Payment Successful 🎉</h1>
+    <p>Your payment was completed successfully.</p>
+    <p>You may now close this page.</p>
+  </body>
+  </html>
+  `);
+});
+
+app.get("/qr-cancel", (req, res) => {
+  res.send(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Payment Cancelled | PayShield</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="font-family:Arial;text-align:center;padding-top:100px;background:#4b0082;color:white">
+    <h1 style="color:#f59e0b">Payment Cancelled</h1>
+    <p>The payment was cancelled.</p>
+    <p>You may return to the merchant and try again.</p>
+  </body>
+  </html>
+  `);
+});
+
+app.get("/qr-error", (req, res) => {
+  res.send(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Payment Error | PayShield</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="font-family:Arial;text-align:center;padding-top:100px;background:#4b0082;color:white">
+    <h1 style="color:#ef4444">Payment Failed</h1>
+    <p>Something went wrong while processing the payment.</p>
+    <p>Please try again.</p>
+  </body>
+  </html>
+  `);
+});
+
+/* =========================
    HEALTH CHECK
 ========================= */
 
