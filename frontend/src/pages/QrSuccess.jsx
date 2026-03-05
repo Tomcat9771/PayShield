@@ -8,7 +8,7 @@ export default function QrSuccess() {
 
   const [receipt, setReceipt] = useState({
     transactionId: "",
-    reference: "",
+    reference: null,
     amount: "",
     bank: "",
     date: ""
@@ -26,9 +26,9 @@ export default function QrSuccess() {
 
     setReceipt(prev => ({
       ...prev,
-      transactionId: txId,
-      amount: amount,
-      bank: bank,
+      transactionId: txId || "",
+      amount: amount || "",
+      bank: bank || "",
       date: new Date().toLocaleString()
     }));
 
@@ -48,12 +48,17 @@ export default function QrSuccess() {
 
       setReceipt(prev => ({
         ...prev,
-        reference: res.data.customer_reference
+        reference: res.data?.customer_reference || "-"
       }));
 
     } catch (err) {
 
-      console.error("Failed to load reference");
+      console.error("Failed to load reference", err);
+
+      setReceipt(prev => ({
+        ...prev,
+        reference: "-"
+      }));
 
     }
 
@@ -84,12 +89,26 @@ export default function QrSuccess() {
           Payment Successful
         </h2>
 
-        <div style={{textAlign:"left", marginTop:"20px"}}>
+        <div style={{ textAlign:"left", marginTop:"20px" }}>
 
           <ReceiptRow label="Transaction ID" value={receipt.transactionId} />
-          <ReceiptRow label="Amount" value={`R${receipt.amount}`} />
-          <ReceiptRow label="Reference" value={receipt.reference || "-"} />
-          <ReceiptRow label="Bank" value={receipt.bank} />
+
+          <ReceiptRow
+            label="Amount"
+            value={receipt.amount ? `R${receipt.amount}` : "-"}
+          />
+
+          <ReceiptRow
+            label="Reference"
+            value={
+              receipt.reference === null
+                ? "Loading..."
+                : receipt.reference
+            }
+          />
+
+          <ReceiptRow label="Bank" value={receipt.bank || "-"} />
+
           <ReceiptRow label="Date" value={receipt.date} />
 
         </div>
@@ -114,15 +133,14 @@ function ReceiptRow({ label, value }) {
 
   return (
     <div style={{
-      display:"flex",
-      justifyContent:"space-between",
-      padding:"8px 0",
-      borderBottom:"1px solid #eee"
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "8px 0",
+      borderBottom: "1px solid #eee"
     }}>
-      <span style={{color:"#555"}}>{label}</span>
-      <span style={{fontWeight:"bold", color:"#111"}}>{value}</span>
+      <span style={{ color:"#555" }}>{label}</span>
+      <span style={{ fontWeight:"bold", color:"#111" }}>{value}</span>
     </div>
   );
 
 }
-
