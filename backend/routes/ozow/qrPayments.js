@@ -76,7 +76,7 @@ router.post("/create", async (req, res) => {
 
     const numericAmount = Number(amount);
 
-    if (!qr_code || isNaN(numericAmount)) {
+    if (!qr_code || isNaN(numericAmount) || !reference) {
       return res.status(400).json({
         error: "Invalid request"
       });
@@ -130,6 +130,8 @@ router.post("/create", async (req, res) => {
 
     const transactionReference = crypto.randomUUID();
 
+    const customerReference = reference || null;
+
     const bankReference =
       reference?.substring(0, 20) ||
       `PSPAY-${Date.now()}`;
@@ -137,7 +139,7 @@ router.post("/create", async (req, res) => {
     console.log("Creating QR payment:", {
       business_id,
       amount: numericAmount,
-      reference: bankReference
+      customer_reference: customerReference
     });
 
     /* -------------------------
@@ -149,6 +151,7 @@ router.post("/create", async (req, res) => {
       .insert({
         provider: "ozow",
         provider_reference: transactionReference,
+        customer_reference: customerReference,
         business_id,
         purpose: "qr_payment",
         amount: numericAmount,
@@ -199,5 +202,4 @@ router.post("/create", async (req, res) => {
 });
 
 export default router;
-
 

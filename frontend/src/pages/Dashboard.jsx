@@ -149,7 +149,7 @@ if (payment.status === "COMPLETE") {
 
 setLatestPayment({
 amount: payment.amount_net,
-reference: payment.provider_ref
+reference: payment.customer_reference
 });
 
 setTimeout(() => {

@@ -99,8 +99,8 @@ export default function PaymentHistory() {
               </td>
 
               <td style={{ padding: "10px" }}>
-                {p.provider_ref || "-"}
-              </td>
+  {p.customer_reference || p.provider_ref || "-"}
+</td>
 
               <td style={{ padding: "10px" }}>
                 {p.status}

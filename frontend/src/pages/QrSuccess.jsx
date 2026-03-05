@@ -5,7 +5,21 @@ export default function QrSuccess() {
   const [params] = useSearchParams();
 
   const transactionId = params.get("TransactionId");
-  const reference = params.get("TransactionReference");
+  useEffect(() => {
+
+  const loadPayment = async () => {
+
+    const res = await api.get(`/payments/${transactionId}`);
+
+    setReference(res.data.customer_reference);
+
+  };
+
+  if (transactionId) {
+    loadPayment();
+  }
+
+}, []);
 
   return (
     <div style={{
