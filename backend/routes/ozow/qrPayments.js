@@ -10,14 +10,13 @@ const router = express.Router();
 =============================== */
 
 router.get("/:qr_code", async (req, res) => {
-
   try {
 
     const { qr_code } = req.params;
 
     const { data: qr, error: qrError } = await supabase
       .from("qr_codes")
-      .select(`id, active, registration_id`)
+      .select("id, active, registration_id")
       .eq("code", qr_code)
       .single();
 
@@ -29,17 +28,25 @@ router.get("/:qr_code", async (req, res) => {
       return res.status(400).json({ error: "QR inactive" });
     }
 
-    const { data: registration } = await supabase
+    const { data: registration, error: regError } = await supabase
       .from("business_registrations")
       .select("business_id")
       .eq("id", qr.registration_id)
       .single();
 
-    const { data: business } = await supabase
+    if (regError || !registration) {
+      return res.status(404).json({ error: "Registration not found" });
+    }
+
+    const { data: business, error: businessError } = await supabase
       .from("businesses")
       .select("business_name")
       .eq("id", registration.business_id)
       .single();
+
+    if (businessError || !business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
 
     return res.json({
       merchant: business.business_name
@@ -54,8 +61,8 @@ router.get("/:qr_code", async (req, res) => {
     });
 
   }
-
 });
+
 
 /* ===============================
    CREATE QR PAYMENT
@@ -87,7 +94,11 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    const { data: qr } = await supabase
+    /* -------------------------
+       GET QR RECORD
+    ------------------------- */
+
+    const { data: qr, error: qrError } = await supabase
       .from("qr_codes")
       .select(`
         id,
@@ -99,14 +110,23 @@ router.post("/create", async (req, res) => {
       .eq("code", qr_code)
       .single();
 
-    if (!qr || !qr.active) {
+    if (qrError || !qr || !qr.active) {
       return res.status(404).json({
         error: "QR not valid"
       });
     }
 
-    const business_id =
-      qr.business_registrations.business_id;
+    const business_id = qr?.business_registrations?.business_id;
+
+    if (!business_id) {
+      return res.status(400).json({
+        error: "QR not linked to a business"
+      });
+    }
+
+    /* -------------------------
+       CREATE REFERENCES
+    ------------------------- */
 
     const transactionReference = crypto.randomUUID();
 
@@ -114,15 +134,39 @@ router.post("/create", async (req, res) => {
       reference?.substring(0, 20) ||
       `PSPAY-${Date.now()}`;
 
-    await supabase.from("payments").insert({
-      provider: "ozow",
-      provider_reference: transactionReference,
+    console.log("Creating QR payment:", {
       business_id,
-      purpose: "qr_payment",
       amount: numericAmount,
-      provider_status: "INITIATED",
-      processed: false
+      reference: bankReference
     });
+
+    /* -------------------------
+       CREATE PAYMENT RECORD
+    ------------------------- */
+
+    const { error: insertError } = await supabase
+      .from("payments")
+      .insert({
+        provider: "ozow",
+        provider_reference: transactionReference,
+        business_id,
+        purpose: "qr_payment",
+        amount: numericAmount,
+        provider_status: "INITIATED",
+        processed: false
+      });
+
+    if (insertError) {
+      console.error("Payment insert error:", insertError);
+
+      return res.status(500).json({
+        error: "Failed to create payment"
+      });
+    }
+
+    /* -------------------------
+       CREATE OZOW PAYMENT
+    ------------------------- */
 
     const ozowResponse = await createOzowPayment({
       amount: numericAmount,
@@ -131,6 +175,12 @@ router.post("/create", async (req, res) => {
       businessId: business_id,
       purpose: "qr_payment"
     });
+
+    if (!ozowResponse?.url) {
+      return res.status(500).json({
+        error: "Ozow payment creation failed"
+      });
+    }
 
     return res.json({
       paymentUrl: ozowResponse.url
@@ -149,4 +199,5 @@ router.post("/create", async (req, res) => {
 });
 
 export default router;
+
 

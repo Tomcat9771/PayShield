@@ -4,7 +4,7 @@ import api from "../api";
 
 export default function PayQR() {
 
-  const { qrCode } = useParams();   // FIXED PARAM NAME
+  const { qrCode } = useParams();
 
   const [merchant, setMerchant] = useState(null);
   const [amount, setAmount] = useState("");
@@ -51,8 +51,10 @@ export default function PayQR() {
 
     setError("");
 
-    if (!amount) {
-      setError("Enter an amount");
+    const numericAmount = Number(amount);
+
+    if (!numericAmount || numericAmount <= 0) {
+      setError("Enter a valid amount");
       return;
     }
 
@@ -60,17 +62,21 @@ export default function PayQR() {
 
       setLoading(true);
 
-      const res = await api.post("/ozow/qr/create-payment", {
+      const res = await api.post("/ozow/qr/create", {
         qr_code: qrCode,
-        amount,
+        amount: numericAmount,
         reference
       });
+
+      if (!res.data?.paymentUrl) {
+        throw new Error("Invalid payment response");
+      }
 
       window.location.href = res.data.paymentUrl;
 
     } catch (err) {
 
-      console.error(err);
+      console.error("Payment error:", err);
 
       setError(
         err?.response?.data?.error ||
@@ -112,6 +118,7 @@ export default function PayQR() {
             <h2 style={{ color: "#111" }}>
               Pay {merchant}
             </h2>
+
             <p style={{ fontSize: "12px", color: "#666" }}>
               Powered by PayShield
             </p>
@@ -147,7 +154,7 @@ export default function PayQR() {
 
         <button
           onClick={handlePayment}
-          disabled={loading}
+          disabled={loading || !merchant}
           style={{
             marginTop: "20px",
             width: "100%",
@@ -155,7 +162,8 @@ export default function PayQR() {
             background: "#facc15",
             border: "none",
             borderRadius: "8px",
-            fontWeight: "bold"
+            fontWeight: "bold",
+            cursor: "pointer"
           }}
         >
           {loading ? "Redirecting..." : "Pay Now"}
