@@ -8,7 +8,7 @@ import businessesRouter from "./routes/businesses.js";
 
 import qrPayments from "./routes/ozow/qrPayments.js";
 import registrationPayments from "./routes/ozow/registrationPayments.js";
-import ozowWebhook from "./routes/webhooks/ozow.js";
+import ozowWebhook from "./routes/ozow/ozow.js";
 
 import requireAuth, { requireAdmin } from "./middleware/auth.js";
 
