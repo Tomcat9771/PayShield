@@ -5,43 +5,109 @@ import { createOzowPayment } from "../../services/ozowService.js";
 
 const router = express.Router();
 
-router.post("/create", async (req, res) => {
+/* ================================
+   CREATE REGISTRATION PAYMENT
+================================ */
 
-  const { business_id } = req.body;
+router.post("/create-payment", async (req, res) => {
 
-  const { data: feeConfig } = await supabase
-    .from("platform_config")
-    .select("value")
-    .eq("key", "registration_fee")
-    .single();
+  try {
 
-  const feeAmount = Number(feeConfig.value);
+    const { business_id } = req.body;
 
-  const transactionReference = crypto.randomUUID();
+    if (!business_id) {
+      return res.status(400).json({
+        error: "business_id required"
+      });
+    }
 
-  const bankReference = `PSREG-${Date.now()}`;
+    /* -------------------------
+       GET REGISTRATION FEE
+    ------------------------- */
 
-  await supabase.from("payments").insert({
-    provider: "ozow",
-    provider_reference: transactionReference,
-    business_id,
-    purpose: "registration_fee",
-    amount: feeAmount,
-    provider_status: "INITIATED",
-    processed: false,
-  });
+    const { data: feeConfig, error: feeError } = await supabase
+      .from("platform_config")
+      .select("value")
+      .eq("key", "registration_fee")
+      .single();
 
-  const ozowResponse = await createOzowPayment({
-    amount: feeAmount,
-    transactionReference,
-    bankReference,
-    businessId: business_id,
-    purpose: "registration_fee",
-  });
+    if (feeError || !feeConfig) {
+      return res.status(500).json({
+        error: "Registration fee not configured"
+      });
+    }
 
-  res.json({
-    paymentUrl: ozowResponse.url,
-  });
+    const feeAmount = Number(feeConfig.value);
+
+    /* -------------------------
+       CREATE REFERENCES
+    ------------------------- */
+
+    const transactionReference = crypto.randomUUID();
+    const bankReference = `PSREG-${Date.now()}`;
+
+    /* -------------------------
+       CREATE PAYMENT RECORD
+    ------------------------- */
+
+    const { error: insertError } = await supabase
+      .from("payments")
+      .insert({
+        provider: "ozow",
+        provider_reference: transactionReference,
+        business_id,
+        purpose: "registration_fee",
+        amount: feeAmount,
+        provider_status: "INITIATED",
+        processed: false
+      });
+
+    if (insertError) {
+
+      console.error("Payment insert error:", insertError);
+
+      return res.status(500).json({
+        error: "Failed to create payment"
+      });
+
+    }
+
+    console.log("Creating registration payment:", {
+      business_id,
+      feeAmount
+    });
+
+    /* -------------------------
+       CREATE OZOW PAYMENT
+    ------------------------- */
+
+    const ozowResponse = await createOzowPayment({
+      amount: feeAmount,
+      transactionReference,
+      bankReference,
+      businessId: business_id,
+      purpose: "registration_fee"
+    });
+
+    if (!ozowResponse?.url) {
+      return res.status(500).json({
+        error: "Ozow payment creation failed"
+      });
+    }
+
+    return res.json({
+      paymentUrl: ozowResponse.url
+    });
+
+  } catch (err) {
+
+    console.error("Registration payment error:", err);
+
+    return res.status(500).json({
+      error: "Registration payment failed"
+    });
+
+  }
 
 });
 
