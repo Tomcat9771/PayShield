@@ -9,8 +9,10 @@ import businessesRouter from "./routes/businesses.js";
 import qrPayments from "./routes/ozow/qrPayments.js";
 import registrationPayments from "./routes/ozow/registrationPayments.js";
 import ozowWebhook from "./routes/ozow/ozow.js";
-
+import ozowPayoutWebhook from "./routes/ozowPayoutWebhook.js";
 import requireAuth, { requireAdmin } from "./middleware/auth.js";
+import payoutsRouter from "./routes/payouts.js";
+import "./jobs/payoutScheduler.js";
 
 /* =========================
    CREATE APP
@@ -75,7 +77,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/ozow/qr", qrPayments);
 app.use("/api/ozow/registration", registrationPayments);
-
+app.use("/payouts", payoutsRouter);
+app.use("/ozow/payout", ozowPayoutWebhook);
 /* =========================
    BUSINESS ROUTES
 ========================= */
