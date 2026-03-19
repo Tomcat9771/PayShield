@@ -6,6 +6,7 @@ global.fetch = fetch;
 
 import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
+import { processPayout } from "./ozowPayoutService.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -139,11 +140,19 @@ export async function runPayoutBatch() {
       continue;
     }
 
-    payoutsCreated++;
+payoutsCreated++;
 
-    console.log(
-      `✅ Payout created: R${totalAmount.toFixed(2)}`
-    );
+console.log(
+  `✅ Payout created: R${totalAmount.toFixed(2)}`
+);
+
+// 🚀 AUTO PROCESS PAYOUT
+await processPayout({
+  id: payoutId,
+  business_id: group.business_id,
+  total_amount: totalAmount,
+});
+
   }
 
   return { payoutsCreated };
