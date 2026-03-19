@@ -12,7 +12,6 @@ import ozowWebhook from "./routes/ozow/ozow.js";
 import ozowPayoutWebhook from "./routes/ozowPayoutWebhook.js";
 import requireAuth, { requireAdmin } from "./middleware/auth.js";
 import payoutsRouter from "./routes/payouts.js";
-import "./jobs/payoutScheduler.js";
 
 /* =========================
    CREATE APP
