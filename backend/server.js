@@ -12,6 +12,7 @@ import ozowWebhook from "./routes/ozow/ozow.js";
 import ozowPayoutWebhook from "./routes/ozowPayoutWebhook.js";
 import requireAuth, { requireAdmin } from "./middleware/auth.js";
 import payoutsRouter from "./routes/payouts.js";
+import schedulerRoutes from "./routes/scheduler.js";
 
 /* =========================
    CREATE APP
@@ -78,6 +79,7 @@ app.use("/api/ozow/qr", qrPayments);
 app.use("/api/ozow/registration", registrationPayments);
 app.use("/payouts", payoutsRouter);
 app.use("/ozow/payout", ozowPayoutWebhook);
+app.use("/scheduler", schedulerRoutes);
 /* =========================
    BUSINESS ROUTES
 ========================= */
