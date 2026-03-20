@@ -23,12 +23,38 @@ router.post("/notify", async (req, res) => {
 
     const status = data.status || data.payoutStatus?.status;
 
-    // 🔥 HANDLE VERIFICATION (CRITICAL FIX)
     if (
-      status === "VerificationRequested" ||
-      status === "Verification"
-    ) {
-      console.log("✅ Verification request received:", payoutId);
+  status === "VerificationRequested" ||
+  status === "Verification"
+) {
+  console.log("✅ Verification request received:", payoutId);
+
+  // 🔥 Get payout from DB
+  const { data: payout } = await supabase
+    .from("payouts")
+    .select("*")
+    .eq("id", payoutId)
+    .single();
+
+  if (!payout) {
+    console.log("❌ Payout not found");
+
+    return res.json({
+      PayoutId: payoutId,
+      IsVerified: false,
+      AccountNumberDecryptionKey: "",
+      Reason: "Payout not found",
+    });
+  }
+
+  // 🔥 Respond EXACTLY as Ozow expects
+  return res.json({
+    PayoutId: payoutId,
+    IsVerified: true,
+    AccountNumberDecryptionKey: payout.encryption_key,
+    Reason: "",
+  });
+}
 
       // respond EXACTLY as Ozow expects
       return res.json({
