@@ -11,56 +11,56 @@ router.post("/notify", async (req, res) => {
   try {
     const data = req.body;
 
-    const payoutId = data.merchantReference;
+    // 🔥 FIX: use correct payoutId
+    const payoutId = data.payoutId || data.merchantReference;
 
     if (!payoutId) {
       console.log("❌ Missing payout reference");
       return res.status(200).send("OK");
     }
 
-    let newStatus = "FAILED";
-    let eventType = "UNKNOWN";
-
     const status = data.status || data.payoutStatus?.status;
 
+    // ==================================================
+    // 🔥 VERIFICATION HANDLER (CRITICAL)
+    // ==================================================
     if (
-  status === "VerificationRequested" ||
-  status === "Verification"
-) {
-  console.log("✅ Verification request received:", payoutId);
+      status === "VerificationRequested" ||
+      status === "Verification"
+    ) {
+      console.log("✅ Verification request received:", payoutId);
 
-  // 🔥 Get payout from DB
-  const { data: payout } = await supabase
-    .from("payouts")
-    .select("*")
-    .eq("id", payoutId)
-    .single();
+      const { data: payout } = await supabase
+        .from("payouts")
+        .select("*")
+        .eq("id", payoutId)
+        .single();
 
-  if (!payout) {
-    console.log("❌ Payout not found");
+      if (!payout) {
+        console.log("❌ Payout not found");
 
-    return res.json({
-      PayoutId: payoutId,
-      IsVerified: false,
-      AccountNumberDecryptionKey: "",
-      Reason: "Payout not found",
-    });
-  }
+        return res.json({
+          PayoutId: payoutId,
+          IsVerified: false,
+          AccountNumberDecryptionKey: "",
+          Reason: "Payout not found",
+        });
+      }
 
-  // 🔥 Respond EXACTLY as Ozow expects
-  return res.json({
-    PayoutId: payoutId,
-    IsVerified: true,
-    AccountNumberDecryptionKey: payout.encryption_key,
-    Reason: "",
-  });
-}
-
-      // respond EXACTLY as Ozow expects
+      // 🔥 FINAL CORRECT RESPONSE
       return res.json({
-        isValid: true,
+        PayoutId: payoutId,
+        IsVerified: true,
+        AccountNumberDecryptionKey: payout.encryption_key,
+        Reason: "",
       });
     }
+
+    // ==================================================
+    // 🔄 NORMAL STATUS HANDLING
+    // ==================================================
+    let newStatus = "FAILED";
+    let eventType = "UNKNOWN";
 
     if (status === "VerificationSuccess") {
       newStatus = "PROCESSING";
