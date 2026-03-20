@@ -134,7 +134,7 @@ router.post("/:id/process", async (req, res) => {
       merchantReference: payout.id,
       customerBankReference: "PayShield",
       isRtc: false,
-      notifyUrl: process.env.OZOW_NOTIFY_URL,
+      notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
       bankGroupId: bankDetails.bank_group_id,
       accountNumber: encryptedAccount,
       branchCode: bankDetails.branch_code,
@@ -153,7 +153,7 @@ router.post("/:id/process", async (req, res) => {
       merchantReference: payout.id,
       customerBankReference: "PayShield",
       isRtc: false,
-      notifyUrl: process.env.OZOW_NOTIFY_URL,
+      notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
       bankingDetails: {
         bankGroupId: bankDetails.bank_group_id,
         accountNumber: encryptedAccount,
