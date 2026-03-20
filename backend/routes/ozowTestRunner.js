@@ -35,9 +35,15 @@ function buildPayload({ siteCode, amount, notifyUrl, accountNumber }) {
 router.post("/run-all-tests", async (req, res) => {
   const results = [];
 
-  const siteCode = process.env.OZOW_SITE_CODE;
-  const apiKey = process.env.OZOW_API_KEY;
-  const notifyUrl = process.env.OZOW_NOTIFY_URL;
+  // ✅ USE PAYOUT CREDENTIALS (THIS IS THE FIX)
+  const siteCode = process.env.OZOW_PAYOUT_SITE_CODE;
+  const apiKey = process.env.OZOW_PAYOUT_API_KEY;
+  const notifyUrl = process.env.OZOW_PAYOUT_NOTIFY_URL;
+
+  console.log("🚀 TEST RUNNER USING:");
+  console.log("SITE CODE:", siteCode);
+  console.log("API KEY:", apiKey ? "Loaded" : "Missing");
+  console.log("NOTIFY URL:", notifyUrl);
 
   // 🔥 Helper to run payout
   async function runPayout(testName, config) {
@@ -58,6 +64,7 @@ router.post("/run-all-tests", async (req, res) => {
           headers: {
             SiteCode: siteCode,
             ApiKey: apiKey,
+            "Content-Type": "application/json",
           },
         }
       );
@@ -128,7 +135,6 @@ router.post("/run-all-tests", async (req, res) => {
 
   async function runMockTest(flagName) {
     try {
-      // Step 1: Set config
       await axios.post(
         `${OZOW_MOCK_API}/settestconfiguration?siteCode=${siteCode}`,
         {
@@ -146,7 +152,6 @@ router.post("/run-all-tests", async (req, res) => {
         }
       );
 
-      // Step 2: Request mock payout
       const payload = buildPayload({
         siteCode,
         amount: 0.1,
@@ -169,7 +174,6 @@ router.post("/run-all-tests", async (req, res) => {
 
       const payoutId = payout.data.payoutId;
 
-      // Step 3: Get result
       const result = await axios.get(
         `${OZOW_MOCK_API}/getpayout?payoutId=${payoutId}`,
         {
@@ -198,10 +202,6 @@ router.post("/run-all-tests", async (req, res) => {
   await runMockTest("NOT_VERIFIED");
   await runMockTest("KEY_MISSING");
 
-  // =========================
-  // 🔚 DONE
-  // =========================
-
   return res.json({
     message: "All tests executed",
     total: results.length,
@@ -210,3 +210,4 @@ router.post("/run-all-tests", async (req, res) => {
 });
 
 export default router;
+
