@@ -2,6 +2,7 @@ import express from "express";
 import { supabase } from "../lib/supabaseClient.js";
 
 const router = express.Router();
+const ACCESS_TOKEN = process.env.OZOW_ACCESS_TOKEN;
 
 // ✅ Payout webhook
 router.post("/notify", async (req, res) => {
@@ -9,9 +10,22 @@ router.post("/notify", async (req, res) => {
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
+    // 🔐 Validate Ozow AccessToken (MUST BE INSIDE ROUTE)
+    const incomingToken = req.headers.accesstoken;
+
+    if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
+      console.log("❌ Invalid AccessToken");
+
+      return res.status(200).json({
+        payoutId: "",
+        isVerified: false,
+        accountNumberDecryptionKey: "",
+        reason: "Invalid AccessToken",
+      });
+    }
+
     const data = req.body;
 
-    // 🔥 FIX: use correct payoutId
     const payoutId = data.payoutId || data.merchantReference;
 
     if (!payoutId) {
@@ -21,40 +35,37 @@ router.post("/notify", async (req, res) => {
 
     const status = data.status || data.payoutStatus?.status;
 
-    // ==================================================
-    // 🔥 VERIFICATION HANDLER (CRITICAL)
-    // ==================================================
-    if (
-      status === "VerificationRequested" ||
-      status === "Verification"
-    ) {
-      console.log("✅ Verification request received:", payoutId);
+// ==================================================
+// 🔥 VERIFICATION HANDLER (CORRECT DETECTION)
+// ==================================================
+if (data.hashCheck && data.accountNumber) {
+  console.log("✅ Verification request detected:", payoutId);
 
-      const { data: payout } = await supabase
-        .from("payouts")
-        .select("*")
-        .eq("id", payoutId)
-        .single();
+  const { data: payout } = await supabase
+    .from("payouts")
+    .select("*")
+    .eq("id", payoutId)
+    .single();
 
-      if (!payout) {
-        console.log("❌ Payout not found");
+  if (!payout || !payout.encryption_key) {
+    console.log("❌ Missing encryption key");
 
-        return res.json({
-          PayoutId: payoutId,
-          IsVerified: false,
-          AccountNumberDecryptionKey: "",
-          Reason: "Payout not found",
-        });
-      }
+    return res.status(200).json({
+      payoutId: payoutId,
+      isVerified: false,
+      accountNumberDecryptionKey: "",
+      reason: "Missing encryption key",
+    });
+  }
 
-      // 🔥 FINAL CORRECT RESPONSE
-      return res.json({
-        PayoutId: payoutId,
-        IsVerified: true,
-        AccountNumberDecryptionKey: payout.encryption_key,
-        Reason: "",
-      });
-    }
+  return res.status(200).json({
+    payoutId: payoutId,
+    isVerified: true,
+    accountNumberDecryptionKey: payout.encryption_key,
+    reason: "",
+  });
+}
+
 
     // ==================================================
     // 🔄 NORMAL STATUS HANDLING
