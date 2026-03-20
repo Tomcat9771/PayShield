@@ -13,6 +13,7 @@ import ozowPayoutWebhook from "./routes/ozowPayoutWebhook.js";
 import requireAuth, { requireAdmin } from "./middleware/auth.js";
 import payoutsRouter from "./routes/payouts.js";
 import schedulerRoutes from "./routes/scheduler.js";
+import ozowTestRunner from "./routes/ozowTestRunner.js";
 
 /* =========================
    CREATE APP
@@ -80,6 +81,7 @@ app.use("/api/ozow/registration", registrationPayments);
 app.use("/payouts", payoutsRouter);
 app.use("/ozow/payout", ozowPayoutWebhook);
 app.use("/scheduler", schedulerRoutes);
+app.use("/api/ozow", ozowTestRunner);
 /* =========================
    BUSINESS ROUTES
 ========================= */

@@ -3,39 +3,59 @@ import { supabase } from "../lib/supabaseClient.js";
 
 const router = express.Router();
 
-// ✅ Payout webhook (mock + real)
+// ✅ Payout webhook
 router.post("/notify", async (req, res) => {
+  console.log("🔥 OZOW WEBHOOK RECEIVED");
+  console.log(JSON.stringify(req.body, null, 2));
+
   try {
     const data = req.body;
-
-    console.log("💸 PAYOUT WEBHOOK:", data);
 
     const payoutId = data.merchantReference;
 
     if (!payoutId) {
-      return res.status(400).send("Missing payout reference");
+      console.log("❌ Missing payout reference");
+      return res.status(200).send("OK");
     }
 
-    // Map Ozow → internal status
     let newStatus = "FAILED";
+    let eventType = "UNKNOWN";
 
-    if (
-      data.status === "Complete" ||
-      data.status === "COMPLETED"
-    ) {
+    const status = data.status || data.payoutStatus?.status;
+
+    if (status === "Complete" || status === "COMPLETED") {
       newStatus = "COMPLETED";
+      eventType = "PAYOUT_COMPLETED";
     }
 
-    // Update payout
+    if (status === "Cancelled") {
+      newStatus = "FAILED";
+      eventType = "PAYOUT_CANCELLED";
+    }
+
+    if (status === "VerificationRequested") {
+      newStatus = "PROCESSING";
+      eventType = "VERIFICATION_REQUEST";
+    }
+
+    if (status === "VerificationSuccess") {
+      newStatus = "PROCESSING";
+      eventType = "VERIFICATION_SUCCESS";
+    }
+
     await supabase
       .from("payouts")
       .update({
         status: newStatus,
-        completed_at: new Date().toISOString(),
+        completed_at:
+          newStatus === "COMPLETED"
+            ? new Date().toISOString()
+            : null,
+        last_error: data.errorMessage || null,
       })
       .eq("id", payoutId);
 
-    console.log(`✅ Payout ${payoutId} → ${newStatus}`);
+    console.log(`✅ ${eventType} → Payout ${payoutId} → ${newStatus}`);
 
     return res.status(200).send("OK");
 

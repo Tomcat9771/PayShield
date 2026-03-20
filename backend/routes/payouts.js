@@ -13,8 +13,8 @@ const supabase = createClient(
 );
 
 // 🔁 Using MOCK for now
-const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/mock/v1";
-// const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
+//const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/mock/v1";
+ const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
 
 /* =====================================================
    📥 GET ALL PAYOUTS (for frontend)
