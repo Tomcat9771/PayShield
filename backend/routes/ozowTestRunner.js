@@ -16,24 +16,20 @@ router.post("/run-all-tests", async (req, res) => {
 
   const siteCode = process.env.OZOW_PAYOUT_SITE_CODE;
   const apiKey = process.env.OZOW_PAYOUT_API_KEY;
+  const privateKey = process.env.OZOW_PRIVATE_KEY;
   const notifyUrl = process.env.OZOW_PAYOUT_NOTIFY_URL;
 
   console.log("🚀 TEST RUNNER USING:");
   console.log("SITE CODE:", siteCode);
   console.log("API KEY:", apiKey ? "Loaded" : "Missing");
-  console.log("NOTIFY URL:", notifyUrl);
+  console.log("PRIVATE KEY:", privateKey ? "Loaded" : "Missing");
 
-  // =========================
-  // 🔹 HELPER: RUN PAYOUT
-  // =========================
   async function runPayout(testName, config) {
     try {
       const merchantReference = `test-${Date.now()}`;
 
-      // 🔐 Generate encryption key
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      // 🔐 Encrypt account number
       const encryptedAccount = encryptAccountNumber(
         config.accountNumber || "4050338500",
         encryptionKey,
@@ -41,7 +37,6 @@ router.post("/run-all-tests", async (req, res) => {
         config.amount
       );
 
-      // 📦 Build payload
       const payload = {
         siteCode,
         amount: config.amount,
@@ -56,7 +51,7 @@ router.post("/run-all-tests", async (req, res) => {
         },
       };
 
-      // 🔑 Generate hash (CORRECT METHOD)
+      // ✅ FIX: use PRIVATE KEY
       const hashCheck = generateOzowHash({
         siteCode,
         amount: payload.amount,
@@ -67,7 +62,7 @@ router.post("/run-all-tests", async (req, res) => {
         bankGroupId: payload.bankingDetails.bankGroupId,
         accountNumber: payload.bankingDetails.accountNumber,
         branchCode: payload.bankingDetails.branchCode,
-        ApiKey: apiKey,
+        PrivateKey: privateKey,
       });
 
       const response = await axios.post(
@@ -77,7 +72,6 @@ router.post("/run-all-tests", async (req, res) => {
           headers: {
             SiteCode: siteCode,
             ApiKey: apiKey,
-            "Content-Type": "application/json",
           },
         }
       );
@@ -99,9 +93,6 @@ router.post("/run-all-tests", async (req, res) => {
     }
   }
 
-  // =========================
-  // 🔹 STANDARD TESTS
-  // =========================
   await runPayout("MIN_AMOUNT", { amount: 0.5 });
   await runPayout("MAX_AMOUNT", { amount: 25 });
   await runPayout("SUCCESS", { amount: 10 });
@@ -111,39 +102,7 @@ router.post("/run-all-tests", async (req, res) => {
     accountNumber: "1234567890",
   });
 
-  // =========================
-  // 🔹 GET STATUS TEST
-  // =========================
-  try {
-    const last = results.find(r => r.payoutId);
-
-    if (last?.payoutId) {
-      const statusRes = await axios.get(
-        `${OZOW_API}/getpayout?payoutId=${last.payoutId}`,
-        {
-          headers: {
-            SiteCode: siteCode,
-            ApiKey: apiKey,
-          },
-        }
-      );
-
-      results.push({
-        testName: "GET_PAYOUT_STATUS",
-        payoutId: last.payoutId,
-        response: statusRes.data,
-      });
-    }
-  } catch (err) {
-    results.push({
-      testName: "GET_PAYOUT_STATUS",
-      error: err.message,
-    });
-  }
-
-  // =========================
-  // 🔹 MOCK TESTS
-  // =========================
+  // ================= MOCK TESTS =================
   async function runMockTest(flagName) {
     try {
       await axios.post(
@@ -152,8 +111,7 @@ router.post("/run-all-tests", async (req, res) => {
           siteCode,
           isAccountDecryptionFailed: flagName === "DECRYPT_FAIL",
           isNotVerifiedResponse: flagName === "NOT_VERIFIED",
-          isAccountNumberDecryptionKeyMissing:
-            flagName === "KEY_MISSING",
+          isAccountNumberDecryptionKeyMissing: flagName === "KEY_MISSING",
         },
         {
           headers: {
@@ -164,7 +122,6 @@ router.post("/run-all-tests", async (req, res) => {
       );
 
       const merchantReference = `mock-${Date.now()}`;
-
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
       const encryptedAccount = encryptAccountNumber(
@@ -188,6 +145,7 @@ router.post("/run-all-tests", async (req, res) => {
         },
       };
 
+      // ✅ FIX HERE TOO
       const hashCheck = generateOzowHash({
         siteCode,
         amount: payload.amount,
@@ -198,7 +156,7 @@ router.post("/run-all-tests", async (req, res) => {
         bankGroupId: payload.bankingDetails.bankGroupId,
         accountNumber: payload.bankingDetails.accountNumber,
         branchCode: payload.bankingDetails.branchCode,
-        ApiKey: apiKey,
+        PrivateKey: privateKey,
       });
 
       const payout = await axios.post(
@@ -251,4 +209,3 @@ router.post("/run-all-tests", async (req, res) => {
 });
 
 export default router;
-
