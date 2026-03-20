@@ -10,11 +10,15 @@ export function generateOzowHash({
   bankGroupId,
   accountNumber,
   branchCode,
-  apiKey,
+  ApiKey,
 }) {
+  // 🔥 Convert amount to CENTS
+  const amountInCents = Math.round(Number(amount) * 100);
+
+  // 🔥 Build string EXACTLY as Ozow expects
   const inputString =
     siteCode +
-    Math.round(amount * 100) +
+    amountInCents +
     merchantReference +
     customerBankReference +
     isRtc +
@@ -22,11 +26,13 @@ export function generateOzowHash({
     bankGroupId +
     accountNumber +
     branchCode +
-    apiKey;
+    ApiKey;
+
+  // 🔥 MUST be lowercase BEFORE hashing
+  const lowerString = inputString.toLowerCase();
 
   return crypto
     .createHash("sha512")
-    .update(inputString.toLowerCase())
+    .update(lowerString)
     .digest("hex");
 }
-

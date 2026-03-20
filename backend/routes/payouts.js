@@ -129,7 +129,7 @@ router.post("/:id/process", async (req, res) => {
 
     // 🔑 Hash
     const hash = generateOzowHash({
-  siteCode: process.env.OZOW_PAYOUT_SITE_CODE,
+  SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
   amount: payout.total_amount,
   merchantReference: payout.id,
   customerBankReference: "PayShield",
@@ -138,7 +138,7 @@ router.post("/:id/process", async (req, res) => {
   bankGroupId: bankDetails.bank_group_id,
   accountNumber: encryptedAccount,
   branchCode: bankDetails.branch_code,
-  PrivateKey: process.env.OZOW_PRIVATE_KEY,
+  ApiKey: process.env.OZOW_PAYOUT_API_KEY,
 });
 
     console.log("🚀 Sending to Ozow:", {
@@ -148,7 +148,7 @@ router.post("/:id/process", async (req, res) => {
     });
 
     const requestBody = {
-      siteCode: process.env.OZOW_PAYOUT_SITE_CODE,
+      SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
       amount: payout.total_amount,
       merchantReference: payout.id,
       customerBankReference: "PayShield",
@@ -169,7 +169,7 @@ router.post("/:id/process", async (req, res) => {
       {
         headers: {
           ApiKey: process.env.OZOW_PAYOUT_API_KEY,
-          siteCode: process.env.OZOW_PAYOUT_SITE_CODE,
+          SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
         },
       }
     );
