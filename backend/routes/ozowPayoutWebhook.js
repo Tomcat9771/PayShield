@@ -23,6 +23,24 @@ router.post("/notify", async (req, res) => {
 
     const status = data.status || data.payoutStatus?.status;
 
+    // 🔥 HANDLE VERIFICATION (CRITICAL FIX)
+    if (
+      status === "VerificationRequested" ||
+      status === "Verification"
+    ) {
+      console.log("✅ Verification request received:", payoutId);
+
+      // respond EXACTLY as Ozow expects
+      return res.json({
+        isValid: true,
+      });
+    }
+
+    if (status === "VerificationSuccess") {
+      newStatus = "PROCESSING";
+      eventType = "VERIFICATION_SUCCESS";
+    }
+
     if (status === "Complete" || status === "COMPLETED") {
       newStatus = "COMPLETED";
       eventType = "PAYOUT_COMPLETED";
@@ -31,16 +49,6 @@ router.post("/notify", async (req, res) => {
     if (status === "Cancelled") {
       newStatus = "FAILED";
       eventType = "PAYOUT_CANCELLED";
-    }
-
-    if (status === "VerificationRequested") {
-      newStatus = "PROCESSING";
-      eventType = "VERIFICATION_REQUEST";
-    }
-
-    if (status === "VerificationSuccess") {
-      newStatus = "PROCESSING";
-      eventType = "VERIFICATION_SUCCESS";
     }
 
     await supabase
