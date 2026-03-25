@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 /* ======================================================
-   ✅ VERIFY WEBHOOK (CRITICAL - FIXED)
+   ✅ VERIFY WEBHOOK (SOLID)
 ====================================================== */
 
 router.post("/verify", async (req, res) => {
@@ -25,7 +25,6 @@ router.post("/verify", async (req, res) => {
 
     let key = null;
 
-    // 🔥 STRONG QUERY (handles race condition)
     const { data } = await supabase
       .from("payouts")
       .select("encryption_key")
@@ -36,7 +35,6 @@ router.post("/verify", async (req, res) => {
 
     console.log("🔑 VERIFY KEY FOUND:", key);
 
-    // 🔥 ALWAYS return true if ANY match
     return res.status(200).json({
       isValid: !!key,
     });
@@ -51,7 +49,7 @@ router.post("/verify", async (req, res) => {
 });
 
 /* ======================================================
-   ✅ NOTIFY WEBHOOK (UPDATED - IMPORTANT)
+   ✅ NOTIFY WEBHOOK (FINAL FIX)
 ====================================================== */
 
 router.post("/notify", async (req, res) => {
@@ -62,32 +60,77 @@ router.post("/notify", async (req, res) => {
     const data = req.body;
 
     const payoutId = data.PayoutId;
+    const merchantRef = data.MerchantReference;
     const status = data.PayoutStatus?.Status;
     const subStatus = data.PayoutStatus?.SubStatus;
+    const errorMessage = data.PayoutStatus?.ErrorMessage;
 
     console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // ✅ UPDATE DB STATUS (IMPORTANT FOR TEST CASES)
-    if (status === 1 && subStatus === 201) {
+    // 🔥 STEP 1: Ensure provider_ref is saved (CRITICAL FIX)
+    const { data: existing } = await supabase
+      .from("payouts")
+      .select("id, provider_ref")
+      .eq("merchant_ref", merchantRef)
+      .maybeSingle();
+
+    if (existing && !existing.provider_ref) {
+      console.log("🧩 Linking provider_ref to payout...");
       await supabase
         .from("payouts")
-        .update({
-          status: "COMPLETED",
-          completed_at: new Date().toISOString(),
-          last_error: null,
-        })
-        .eq("provider_ref", payoutId);
+        .update({ provider_ref: payoutId })
+        .eq("merchant_ref", merchantRef);
+    }
+
+    // 🔥 STEP 2: Update status (WITH FALLBACK)
+    let updateQuery = supabase
+      .from("payouts")
+      .update({
+        last_error: status === 99 ? errorMessage : null,
+      });
+
+    if (status === 1 && subStatus === 201) {
+      updateQuery = updateQuery.update({
+        status: "COMPLETED",
+        completed_at: new Date().toISOString(),
+        last_error: null,
+      });
     }
 
     if (status === 99) {
+      updateQuery = updateQuery.update({
+        status: "FAILED",
+        last_error: errorMessage,
+      });
+    }
+
+    // 🔥 Try update by provider_ref first
+    let { data: updated, error } = await updateQuery.eq("provider_ref", payoutId).select();
+
+    // 🔥 FALLBACK: update using merchant_ref if nothing updated
+    if (!updated || updated.length === 0) {
+      console.log("⚠️ provider_ref not found, falling back to merchant_ref");
+
       await supabase
         .from("payouts")
         .update({
-          status: "FAILED",
-          last_error: data.PayoutStatus?.ErrorMessage,
+          status:
+            status === 1 && subStatus === 201
+              ? "COMPLETED"
+              : status === 99
+              ? "FAILED"
+              : "PROCESSING",
+          completed_at:
+            status === 1 && subStatus === 201
+              ? new Date().toISOString()
+              : null,
+          last_error: status === 99 ? errorMessage : null,
+          provider_ref: payoutId, // 🔥 ALSO FIXES FUTURE LOOKUPS
         })
-        .eq("provider_ref", payoutId);
+        .eq("merchant_ref", merchantRef);
     }
+
+    console.log("✅ DB UPDATE COMPLETE");
 
     return res.status(200).send("OK");
 
