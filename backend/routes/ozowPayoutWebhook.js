@@ -18,23 +18,38 @@ router.post("/verify", async (req, res) => {
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    // 🔥 FIX: Use correct casing
     const payoutId = req.body.PayoutId;
+    const merchantRef = req.body.MerchantReference;
 
-    // 🔥 FIX: Match using provider_ref (NOT id)
-    const { data, error } = await supabase
+    let key = null;
+
+    // 🔥 FIRST: Try provider_ref (Ozow payout ID)
+    let { data, error } = await supabase
       .from("payouts")
       .select("encryption_key")
       .eq("provider_ref", payoutId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      console.log("❌ DB ERROR:", error.message);
+      console.log("❌ DB ERROR (provider_ref):", error.message);
     }
 
-    const key = data?.encryption_key;
+    key = data?.encryption_key;
 
-    console.log("🔑 VERIFY KEY FROM DB:", payoutId, key);
+    // 🔥 FALLBACK: Try merchantReference (your internal payout ID)
+    if (!key && merchantRef) {
+      console.log("⚠️ Falling back to MerchantReference:", merchantRef);
+
+      const fallback = await supabase
+        .from("payouts")
+        .select("encryption_key")
+        .eq("id", merchantRef)
+        .maybeSingle();
+
+      key = fallback.data?.encryption_key;
+    }
+
+    console.log("🔑 FINAL VERIFY KEY:", payoutId, key);
 
     return res.status(200).json({
       PayoutId: payoutId,
@@ -60,14 +75,13 @@ router.post("/notify", async (req, res) => {
   try {
     const data = req.body;
 
-    // 🔥 FIX: Correct casing
     const payoutId = data.PayoutId;
     const status = data.PayoutStatus?.Status;
     const subStatus = data.PayoutStatus?.SubStatus;
 
     console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // 👉 OPTIONAL: Update DB properly
+    // 🔥 OPTIONAL: Update payout status in DB
     /*
     await supabase
       .from("payouts")
@@ -86,3 +100,4 @@ router.post("/notify", async (req, res) => {
 });
 
 export default router;
+
