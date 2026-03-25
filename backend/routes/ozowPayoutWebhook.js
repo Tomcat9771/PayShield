@@ -9,8 +9,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// 🔥 Helper to send EXACT Ozow-compliant response
+function sendOzowResponse(res, payload) {
+  return res
+    .status(200)
+    .set("Content-Type", "application/json")
+    .send(JSON.stringify(payload));
+}
+
 /* ======================================================
-   🔐 OZOW VERIFY WEBHOOK (FINAL FIXED VERSION)
+   🔐 OZOW VERIFY WEBHOOK (FINAL WORKING VERSION)
 ====================================================== */
 router.post("/verify", async (req, res) => {
   console.log("🔐 OZOW VERIFY WEBHOOK");
@@ -20,7 +28,7 @@ router.post("/verify", async (req, res) => {
     const accessToken = req.headers.accesstoken;
 
     if (accessToken !== process.env.OZOW_ACCESS_TOKEN) {
-      return res.status(200).json({
+      return sendOzowResponse(res, {
         PayoutId: req.body?.payoutId,
         IsVerified: false,
         Reason: "Invalid AccessToken",
@@ -39,7 +47,6 @@ router.post("/verify", async (req, res) => {
       hashCheck,
     } = req.body;
 
-    // 🔒 Defensive checks (VERY IMPORTANT)
     if (
       !payoutId ||
       !siteCode ||
@@ -47,9 +54,7 @@ router.post("/verify", async (req, res) => {
       !bankingDetails.accountNumber ||
       !bankingDetails.branchCode
     ) {
-      console.log("❌ Missing required fields");
-
-      return res.status(200).json({
+      return sendOzowResponse(res, {
         PayoutId: payoutId,
         IsVerified: false,
         Reason: "Invalid request payload",
@@ -58,21 +63,18 @@ router.post("/verify", async (req, res) => {
 
     const apiKey = process.env.OZOW_PAYOUT_API_KEY;
 
-    // 🔥 ENSURE BOOLEAN IS STRING "true"/"false"
-    const rtcValue = String(isRtc).toLowerCase();
-
     const inputString =
-  payoutId +
-  siteCode +
-  Math.floor(amount * 100) +
-  merchantReference +
-  (customerBankReference || "") +
-  String(isRtc).toLowerCase() +
-  (notifyUrl || "") +
-  bankingDetails.bankGroupId +
-  bankingDetails.accountNumber +
-  bankingDetails.branchCode +
-  apiKey;
+      payoutId +
+      siteCode +
+      Math.floor(amount * 100) +
+      merchantReference +
+      (customerBankReference || "") +
+      String(isRtc).toLowerCase() +
+      (notifyUrl || "") +
+      bankingDetails.bankGroupId +
+      bankingDetails.accountNumber +
+      bankingDetails.branchCode +
+      apiKey;
 
     const calculatedHash = crypto
       .createHash("sha512")
@@ -84,7 +86,7 @@ router.post("/verify", async (req, res) => {
       console.log("Expected:", calculatedHash);
       console.log("Received:", hashCheck);
 
-      return res.status(200).json({
+      return sendOzowResponse(res, {
         PayoutId: payoutId,
         IsVerified: false,
         Reason: "Invalid hash",
@@ -98,7 +100,7 @@ router.post("/verify", async (req, res) => {
       .single();
 
     if (error || !payout) {
-      return res.status(200).json({
+      return sendOzowResponse(res, {
         PayoutId: payoutId,
         IsVerified: false,
         Reason: "Payout not found",
@@ -106,7 +108,7 @@ router.post("/verify", async (req, res) => {
     }
 
     if (!payout.encryption_key) {
-      return res.status(200).json({
+      return sendOzowResponse(res, {
         PayoutId: payoutId,
         IsVerified: false,
         Reason: "Missing encryption key",
@@ -116,7 +118,7 @@ router.post("/verify", async (req, res) => {
     console.log("✅ VERIFIED SUCCESS");
     console.log("🔑 KEY:", payout.encryption_key);
 
-    return res.status(200).json({
+    return sendOzowResponse(res, {
       PayoutId: payoutId,
       IsVerified: true,
       AccountNumberDecryptionKey: payout.encryption_key,
@@ -126,7 +128,7 @@ router.post("/verify", async (req, res) => {
   } catch (err) {
     console.error("❌ VERIFY ERROR:", err.message);
 
-    return res.status(200).json({
+    return sendOzowResponse(res, {
       PayoutId: req.body?.payoutId,
       IsVerified: false,
       Reason: "Server error",
@@ -205,7 +207,7 @@ router.post("/notify", async (req, res) => {
 });
 
 /* ======================================================
-   🔁 OZOW COMPATIBILITY ROUTE (IMPORTANT)
+   🔁 OZOW COMPATIBILITY ROUTE
 ====================================================== */
 router.post("/payout-verify", async (req, res) => {
   req.url = "/verify";
@@ -213,4 +215,3 @@ router.post("/payout-verify", async (req, res) => {
 });
 
 export default router;
-
