@@ -13,7 +13,6 @@ const supabase = createClient(
 ====================================================== */
 
 router.post("/verify", async (req, res) => {
-  console.log("🔥🔥🔥 VERIFY ENDPOINT HIT 🔥🔥🔥");
   console.log("🔥 OZOW VERIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
@@ -21,46 +20,19 @@ router.post("/verify", async (req, res) => {
     const payoutId = req.body.PayoutId;
     const merchantRef = req.body.MerchantReference;
 
-    let key = null;
+    console.log("🔍 Looking up payoutId:", payoutId);
 
-// 🔥 1. Try provider_ref (Ozow payout ID)
-let { data } = await supabase
-  .from("payouts")
-  .select("encryption_key")
-  .eq("provider_ref", payoutId)
-  .maybeSingle();
+    // ✅ ONLY TRUST provider_ref
+    const { data } = await supabase
+      .from("payouts")
+      .select("encryption_key")
+      .eq("provider_ref", payoutId)
+      .maybeSingle();
 
-key = data?.encryption_key;
+    const key = data?.encryption_key;
 
-// 🔥 2. Try merchantReference ONLY if it's a real UUID
-if (!key && merchantRef && !merchantRef.startsWith("mock-")) {
-  console.log("⚠️ Fallback using MerchantReference:", merchantRef);
-
-  const fallback = await supabase
-    .from("payouts")
-    .select("encryption_key")
-    .eq("id", merchantRef)
-    .maybeSingle();
-
-  key = fallback.data?.encryption_key;
-}
-
-// 🔥 3. FINAL SAFETY: use ANY processing payout (for test mode)
-if (!key) {
-  console.log("⚠️ FINAL FALLBACK: grabbing latest PROCESSING payout");
-
-  const fallback = await supabase
-    .from("payouts")
-    .select("encryption_key")
-    .eq("status", "PROCESSING")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  key = fallback.data?.encryption_key;
-}
-
-console.log("🔑 FINAL VERIFY KEY:", payoutId, key);
+    console.log("📦 DB RESULT:", data);
+    console.log("🔑 FINAL VERIFY KEY:", key);
 
     return res.status(200).json({
       PayoutId: payoutId,
