@@ -40,18 +40,23 @@ router.post("/run-all-tests", async (req, res) => {
           );
 
       const payload = {
-        siteCode,
-        amount: config.amount,
-        merchantReference,
-        customerBankReference: "Test",
-        isRtc: false,
-        notifyUrl,
-        bankingDetails: {
-          bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
-          accountNumber: accountNumber,
-          branchCode: "632005",
-        },
-      };
+  SiteCode: siteCode,
+  amount: config.amount,
+  merchantReference,
+  customerBankReference: "Test",
+  isRtc: false,
+
+  // 🔥 CRITICAL
+  NotifyUrl: notifyUrl,
+  VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
+
+  bankingDetails: {
+    bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+    accountNumber: accountNumber,
+    branchCode: "632005",
+  },
+};
+
 
       const hashCheck = generateOzowHash({
         siteCode,
@@ -133,18 +138,22 @@ router.post("/run-all-tests", async (req, res) => {
       );
 
       const payload = {
-        siteCode,
-        amount: 0.1,
-        merchantReference,
-        customerBankReference: "Mock",
-        isRtc: false,
-        notifyUrl,
-        bankingDetails: {
-          bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
-          accountNumber: encryptedAccount,
-          branchCode: "632005",
-        },
-      };
+  SiteCode: siteCode,
+  amount: config.amount,
+  merchantReference,
+  customerBankReference: "Test",
+  isRtc: false,
+
+  // 🔥 CRITICAL
+  NotifyUrl: notifyUrl,
+  VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
+
+  bankingDetails: {
+    bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+    accountNumber: accountNumber,
+    branchCode: "632005",
+  },
+};
 
       const hashCheck = generateOzowHash({
         siteCode,
