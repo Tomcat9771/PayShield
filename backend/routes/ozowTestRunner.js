@@ -3,10 +3,16 @@
 import express from "express";
 import axios from "axios";
 import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
 import { generateOzowHash } from "../utils/ozowHash.js";
 import { encryptAccountNumber } from "../utils/ozowEncrypt.js";
 
 const router = express.Router();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const OZOW_API = "https://stagingpayoutsapi.ozow.com/v1";
 const OZOW_MOCK_API = "https://stagingpayoutsapi.ozow.com/mock/v1";
@@ -30,6 +36,14 @@ router.post("/run-all-tests", async (req, res) => {
     try {
       const merchantReference = `test-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
+
+      // 🔥 STORE KEY IN DB (CRITICAL FIX)
+      await supabase.from("payouts").insert({
+        id: merchantReference,
+        provider_ref: null,
+        encryption_key: encryptionKey,
+        status: "PROCESSING",
+      });
 
       const isCDVTest = config.accountNumber === "1234567890";
 
@@ -133,6 +147,14 @@ router.post("/run-all-tests", async (req, res) => {
       const merchantReference = `mock-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
+      // 🔥 STORE KEY IN DB (CRITICAL FIX)
+      await supabase.from("payouts").insert({
+        id: merchantReference,
+        provider_ref: null,
+        encryption_key: encryptionKey,
+        status: "PROCESSING",
+      });
+
       const encryptedAccount = encryptAccountNumber(
         "4050338500",
         encryptionKey,
@@ -220,4 +242,5 @@ router.post("/run-all-tests", async (req, res) => {
 });
 
 export default router;
+
 
