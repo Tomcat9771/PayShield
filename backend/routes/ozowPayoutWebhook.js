@@ -18,13 +18,14 @@ router.post("/verify", async (req, res) => {
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    const payoutId = req.body.payoutId;
+    // 🔥 FIX: Use correct casing
+    const payoutId = req.body.PayoutId;
 
-    // 🔥 FETCH KEY FROM DATABASE (CRITICAL FIX)
+    // 🔥 FIX: Match using provider_ref (NOT id)
     const { data, error } = await supabase
       .from("payouts")
       .select("encryption_key")
-      .eq("id", payoutId)
+      .eq("provider_ref", payoutId)
       .single();
 
     if (error) {
@@ -58,15 +59,23 @@ router.post("/notify", async (req, res) => {
 
   try {
     const data = req.body;
-    const payoutId = data.payoutId;
 
-    const status = data.payoutStatus?.status;
-    const subStatus = data.payoutStatus?.subStatus;
+    // 🔥 FIX: Correct casing
+    const payoutId = data.PayoutId;
+    const status = data.PayoutStatus?.Status;
+    const subStatus = data.PayoutStatus?.SubStatus;
 
     console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // 👉 OPTIONAL: Update DB here
-    // await supabase.from("payouts").update({ status }).eq("id", payoutId);
+    // 👉 OPTIONAL: Update DB properly
+    /*
+    await supabase
+      .from("payouts")
+      .update({
+        status: status === 1 ? "COMPLETED" : "FAILED"
+      })
+      .eq("provider_ref", payoutId);
+    */
 
     return res.status(200).send("OK");
 
