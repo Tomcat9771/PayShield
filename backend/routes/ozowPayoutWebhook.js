@@ -62,17 +62,17 @@ router.post("/verify", async (req, res) => {
     const rtcValue = String(isRtc).toLowerCase();
 
     const inputString =
-      payoutId +
-      siteCode +
-      Math.floor(amount * 100) +
-      merchantReference +
-      customerBankReference +
-      rtcValue +
-      notifyUrl +
-      bankingDetails.bankGroupId +
-      bankingDetails.accountNumber +
-      bankingDetails.branchCode +
-      apiKey;
+  payoutId +
+  siteCode +
+  Math.floor(amount * 100) +
+  merchantReference +
+  (customerBankReference || "") +
+  String(isRtc).toLowerCase() +
+  (notifyUrl || "") +
+  bankingDetails.bankGroupId +
+  bankingDetails.accountNumber +
+  bankingDetails.branchCode +
+  apiKey;
 
     const calculatedHash = crypto
       .createHash("sha512")
