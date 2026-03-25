@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const router = express.Router();
@@ -9,7 +10,108 @@ const supabase = createClient(
 );
 
 /* ======================================================
-   ✅ OZOW NOTIFY WEBHOOK (FINAL CLEAN VERSION)
+   🔐 OZOW VERIFY WEBHOOK (CRITICAL FIX)
+====================================================== */
+router.post("/verify", async (req, res) => {
+  console.log("🔐 OZOW VERIFY WEBHOOK");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  try {
+    const accessToken = req.headers.accesstoken;
+
+    // 🔒 AUTH CHECK
+    if (accessToken !== process.env.OZOW_ACCESS_TOKEN) {
+      console.log("❌ Invalid AccessToken:", accessToken);
+
+      return res.status(200).json({
+        payoutId: req.body.payoutId,
+        isVerified: false,
+        reason: "Invalid AccessToken",
+      });
+    }
+
+    const {
+      payoutId,
+      siteCode,
+      amount,
+      merchantReference,
+      customerBankReference,
+      isRtc,
+      notifyUrl,
+      bankingDetails,
+      hashCheck,
+    } = req.body;
+
+    const apiKey = process.env.OZOW_PAYOUT_API_KEY;
+
+    // 🔥 EXACT HASH ORDER REQUIRED BY OZOW
+    const inputString =
+      payoutId +
+      siteCode +
+      Math.floor(amount * 100) +
+      merchantReference +
+      customerBankReference +
+      isRtc +
+      notifyUrl +
+      bankingDetails.bankGroupId +
+      bankingDetails.accountNumber +
+      bankingDetails.branchCode +
+      apiKey;
+
+    const calculatedHash = crypto
+      .createHash("sha512")
+      .update(inputString.toLowerCase())
+      .digest("hex");
+
+    if (calculatedHash !== hashCheck) {
+      console.log("❌ HASH MISMATCH");
+
+      return res.status(200).json({
+        payoutId,
+        isVerified: false,
+        reason: "Invalid hash",
+      });
+    }
+
+    // 🔎 FIND PAYOUT IN DB
+    const { data: payout, error } = await supabase
+      .from("payouts")
+      .select("*")
+      .eq("merchant_ref", merchantReference)
+      .single();
+
+    if (error || !payout) {
+      console.log("❌ Payout not found:", merchantReference);
+
+      return res.status(200).json({
+        payoutId,
+        isVerified: false,
+        reason: "Payout not found",
+      });
+    }
+
+    console.log("✅ VERIFIED → returning AES key");
+
+    return res.status(200).json({
+      payoutId,
+      isVerified: true,
+      accountNumberDecryptionKey: payout.encryption_key,
+      reason: "",
+    });
+
+  } catch (err) {
+    console.error("❌ VERIFY ERROR:", err.message);
+
+    return res.status(200).json({
+      payoutId: req.body?.payoutId,
+      isVerified: false,
+      reason: "Server error",
+    });
+  }
+});
+
+/* ======================================================
+   ✅ OZOW NOTIFY WEBHOOK (UNCHANGED)
 ====================================================== */
 
 router.post("/notify", async (req, res) => {
@@ -42,7 +144,7 @@ router.post("/notify", async (req, res) => {
         .eq("merchant_ref", merchantRef);
     }
 
-    // 🔥 STEP 2: Build update payload ONCE (NO chaining bug)
+    // 🔥 STEP 2: Build update payload ONCE
     let updateData = {
       provider_ref: payoutId,
       last_error: status === 99 ? errorMessage : null,
