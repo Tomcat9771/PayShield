@@ -22,14 +22,29 @@ router.post("/verify", async (req, res) => {
 
     console.log("🔍 Looking up payoutId:", payoutId);
 
-    // ✅ ONLY TRUST provider_ref
-    const { data } = await supabase
+    let key = null;
+
+    // 🔥 1. Try provider_ref (normal case)
+    let { data } = await supabase
       .from("payouts")
       .select("encryption_key")
       .eq("provider_ref", payoutId)
       .maybeSingle();
 
-    const key = data?.encryption_key;
+    key = data?.encryption_key;
+
+    // 🔥 2. FALLBACK (CRITICAL FIX for race condition)
+    if (!key && merchantRef) {
+      console.log("⚠️ FALLBACK using merchantReference:", merchantRef);
+
+      const fallback = await supabase
+        .from("payouts")
+        .select("encryption_key")
+        .eq("id", merchantRef)
+        .maybeSingle();
+
+      key = fallback.data?.encryption_key;
+    }
 
     console.log("📦 DB RESULT:", data);
     console.log("🔑 FINAL VERIFY KEY:", key);
