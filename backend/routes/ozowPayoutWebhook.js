@@ -10,7 +10,7 @@ const supabase = createClient(
 );
 
 /* ======================================================
-   🔐 OZOW VERIFY WEBHOOK (CRITICAL FIX)
+   🔐 OZOW VERIFY WEBHOOK (FINAL FIXED VERSION)
 ====================================================== */
 router.post("/verify", async (req, res) => {
   console.log("🔐 OZOW VERIFY WEBHOOK");
@@ -21,14 +21,14 @@ router.post("/verify", async (req, res) => {
 
     if (accessToken !== process.env.OZOW_ACCESS_TOKEN) {
       return res.status(200).json({
-        PayoutId: req.body.payoutId,
+        PayoutId: req.body?.payoutId,
         IsVerified: false,
         Reason: "Invalid AccessToken",
       });
     }
 
     const {
-      payoutId, // ✅ FIXED (lowercase)
+      payoutId,
       siteCode,
       amount,
       merchantReference,
@@ -39,7 +39,27 @@ router.post("/verify", async (req, res) => {
       hashCheck,
     } = req.body;
 
+    // 🔒 Defensive checks (VERY IMPORTANT)
+    if (
+      !payoutId ||
+      !siteCode ||
+      !bankingDetails ||
+      !bankingDetails.accountNumber ||
+      !bankingDetails.branchCode
+    ) {
+      console.log("❌ Missing required fields");
+
+      return res.status(200).json({
+        PayoutId: payoutId,
+        IsVerified: false,
+        Reason: "Invalid request payload",
+      });
+    }
+
     const apiKey = process.env.OZOW_PAYOUT_API_KEY;
+
+    // 🔥 ENSURE BOOLEAN IS STRING "true"/"false"
+    const rtcValue = String(isRtc).toLowerCase();
 
     const inputString =
       payoutId +
@@ -47,7 +67,7 @@ router.post("/verify", async (req, res) => {
       Math.floor(amount * 100) +
       merchantReference +
       customerBankReference +
-      isRtc +
+      rtcValue +
       notifyUrl +
       bankingDetails.bankGroupId +
       bankingDetails.accountNumber +
@@ -60,6 +80,10 @@ router.post("/verify", async (req, res) => {
       .digest("hex");
 
     if (calculatedHash !== hashCheck) {
+      console.log("❌ HASH MISMATCH");
+      console.log("Expected:", calculatedHash);
+      console.log("Received:", hashCheck);
+
       return res.status(200).json({
         PayoutId: payoutId,
         IsVerified: false,
@@ -81,6 +105,17 @@ router.post("/verify", async (req, res) => {
       });
     }
 
+    if (!payout.encryption_key) {
+      return res.status(200).json({
+        PayoutId: payoutId,
+        IsVerified: false,
+        Reason: "Missing encryption key",
+      });
+    }
+
+    console.log("✅ VERIFIED SUCCESS");
+    console.log("🔑 KEY:", payout.encryption_key);
+
     return res.status(200).json({
       PayoutId: payoutId,
       IsVerified: true,
@@ -89,6 +124,8 @@ router.post("/verify", async (req, res) => {
     });
 
   } catch (err) {
+    console.error("❌ VERIFY ERROR:", err.message);
+
     return res.status(200).json({
       PayoutId: req.body?.payoutId,
       IsVerified: false,
@@ -98,7 +135,7 @@ router.post("/verify", async (req, res) => {
 });
 
 /* ======================================================
-   ✅ OZOW NOTIFY WEBHOOK (UNCHANGED)
+   ✅ OZOW NOTIFY WEBHOOK
 ====================================================== */
 
 router.post("/notify", async (req, res) => {
@@ -116,7 +153,6 @@ router.post("/notify", async (req, res) => {
 
     console.log(`📊 STATUS UPDATE: ${PayoutId} → status=${status} sub=${subStatus}`);
 
-    // 🔥 STEP 1: Ensure provider_ref exists
     const { data: existing } = await supabase
       .from("payouts")
       .select("id, provider_ref")
@@ -124,14 +160,12 @@ router.post("/notify", async (req, res) => {
       .maybeSingle();
 
     if (existing && !existing.provider_ref) {
-      console.log("🧩 Linking provider_ref...");
       await supabase
         .from("payouts")
         .update({ provider_ref: PayoutId })
         .eq("merchant_ref", merchantRef);
     }
 
-    // 🔥 STEP 2: Build update payload ONCE
     let updateData = {
       provider_ref: PayoutId,
       last_error: status === 99 ? errorMessage : null,
@@ -147,17 +181,13 @@ router.post("/notify", async (req, res) => {
       updateData.status = "PROCESSING";
     }
 
-    // 🔥 STEP 3: Try update by provider_ref first
     let { data: updated } = await supabase
       .from("payouts")
       .update(updateData)
       .eq("provider_ref", PayoutId)
       .select();
 
-    // 🔥 STEP 4: Fallback to merchant_ref
     if (!updated || updated.length === 0) {
-      console.log("⚠️ Fallback → merchant_ref");
-
       await supabase
         .from("payouts")
         .update(updateData)
@@ -173,10 +203,14 @@ router.post("/notify", async (req, res) => {
     return res.status(200).send("OK");
   }
 });
+
+/* ======================================================
+   🔁 OZOW COMPATIBILITY ROUTE (IMPORTANT)
+====================================================== */
 router.post("/payout-verify", async (req, res) => {
-  // just forward to /verify logic
   req.url = "/verify";
   return router.handle(req, res);
 });
 
 export default router;
+
