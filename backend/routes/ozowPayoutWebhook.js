@@ -20,35 +20,23 @@ router.post("/verify", async (req, res) => {
     const payoutId = req.body.PayoutId;
     const merchantRef = req.body.MerchantReference;
 
-    console.log("🔍 Looking up payoutId:", payoutId);
+    console.log("🔍 payoutId:", payoutId);
+    console.log("🔍 merchantRef:", merchantRef);
 
     let key = null;
 
-    // ✅ 1. Try provider_ref (correct)
+    // 🔥 STRONG QUERY (handles race condition)
     const { data } = await supabase
       .from("payouts")
       .select("encryption_key")
-      .eq("provider_ref", payoutId)
+      .or(`provider_ref.eq.${payoutId},merchant_ref.eq.${merchantRef}`)
       .maybeSingle();
 
     key = data?.encryption_key;
 
-    // ✅ 2. FIXED FALLBACK (correct column)
-    if (!key && merchantRef) {
-      console.log("⚠️ FALLBACK using merchant_ref:", merchantRef);
+    console.log("🔑 VERIFY KEY FOUND:", key);
 
-      const fallback = await supabase
-        .from("payouts")
-        .select("encryption_key")
-        .eq("merchant_ref", merchantRef) // ✅ FIXED
-        .maybeSingle();
-
-      key = fallback.data?.encryption_key;
-    }
-
-    console.log("🔑 FINAL VERIFY KEY:", key);
-
-    // 🔥 CRITICAL: Return EXACT format Ozow expects
+    // 🔥 ALWAYS return true if ANY match
     return res.status(200).json({
       isValid: !!key,
     });
@@ -56,7 +44,6 @@ router.post("/verify", async (req, res) => {
   } catch (err) {
     console.error("❌ VERIFY ERROR:", err.message);
 
-    // 🔥 Even on error, MUST return valid response
     return res.status(200).json({
       isValid: false,
     });
