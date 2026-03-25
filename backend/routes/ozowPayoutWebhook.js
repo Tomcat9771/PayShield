@@ -12,41 +12,82 @@ const supabase = createClient(
    ✅ VERIFY WEBHOOK (SOLID)
 ====================================================== */
 
-router.post("/verify", async (req, res) => {
-  console.log("🔥 OZOW VERIFY WEBHOOK");
+router.post("/notify", async (req, res) => {
+  console.log("🔥 OZOW NOTIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    const payoutId = req.body.PayoutId;
-    const merchantRef = req.body.MerchantReference;
+    const data = req.body;
 
-    console.log("🔍 payoutId:", payoutId);
-    console.log("🔍 merchantRef:", merchantRef);
+    const payoutId = data.PayoutId;
+    const merchantRef = data.MerchantReference;
+    const status = data.PayoutStatus?.Status;
+    const subStatus = data.PayoutStatus?.SubStatus;
+    const errorMessage = data.PayoutStatus?.ErrorMessage;
 
-    let key = null;
+    console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    const { data } = await supabase
+    // 🔥 STEP 1: Ensure provider_ref is linked
+    const { data: existing } = await supabase
       .from("payouts")
-      .select("encryption_key")
-      .or(`provider_ref.eq.${payoutId},merchant_ref.eq.${merchantRef}`)
+      .select("id, provider_ref")
+      .eq("merchant_ref", merchantRef)
       .maybeSingle();
 
-    key = data?.encryption_key;
+    if (existing && !existing.provider_ref) {
+      console.log("🧩 Linking provider_ref...");
+      await supabase
+        .from("payouts")
+        .update({ provider_ref: payoutId })
+        .eq("merchant_ref", merchantRef);
+    }
 
-    console.log("🔑 VERIFY KEY FOUND:", key);
+    // 🔥 STEP 2: Build update payload ONCE
+    let updateData = {
+      last_error: status === 99 ? errorMessage : null,
+    };
 
-    return res.status(200).json({
-      isValid: !!key,
-    });
+    if (status === 1 && subStatus === 201) {
+      updateData.status = "COMPLETED";
+      updateData.completed_at = new Date().toISOString();
+      updateData.last_error = null;
+    }
+
+    if (status === 99) {
+      updateData.status = "FAILED";
+      updateData.last_error = errorMessage;
+    }
+
+    // 🔥 STEP 3: Try provider_ref first
+    let { data: updated } = await supabase
+      .from("payouts")
+      .update(updateData)
+      .eq("provider_ref", payoutId)
+      .select();
+
+    // 🔥 STEP 4: Fallback to merchant_ref
+    if (!updated || updated.length === 0) {
+      console.log("⚠️ Fallback → merchant_ref");
+
+      await supabase
+        .from("payouts")
+        .update({
+          ...updateData,
+          provider_ref: payoutId, // ensure future linking
+        })
+        .eq("merchant_ref", merchantRef);
+    }
+
+    console.log("✅ DB UPDATE COMPLETE");
+
+    return res.status(200).send("OK");
 
   } catch (err) {
-    console.error("❌ VERIFY ERROR:", err.message);
-
-    return res.status(200).json({
-      isValid: false,
-    });
+    console.error("❌ NOTIFY ERROR:", err.message);
+    return res.status(200).send("OK");
   }
 });
+
 
 /* ======================================================
    ✅ NOTIFY WEBHOOK (FINAL FIX)
