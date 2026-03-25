@@ -126,7 +126,7 @@ router.post("/:id/process", async (req, res) => {
       payout.total_amount
     );
 
-    // 🔥 STORE KEY FOR WEBHOOK (THIS FIXES YOUR ERROR)
+    // 🔥 STORE KEY FOR WEBHOOK
     global.payoutKeys[payout.id] = encryptionKey;
 
     // 🔑 Generate hash
@@ -146,20 +146,27 @@ router.post("/:id/process", async (req, res) => {
     console.log("🚀 Sending payout to Ozow:", payoutId);
 
     const requestBody = {
-  SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
-  amount: payout.total_amount,
-  merchantReference: payout.id,
-  customerBankReference: "PayShield",
-  isRtc: false,
-  notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
-  verifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL, // 🔥 ADD THIS
-  bankingDetails: {
-    bankGroupId: bankDetails.bank_group_id,
-    accountNumber: encryptedAccount,
-    branchCode: bankDetails.branch_code,
-  },
-  hashCheck: hash,
-};
+      SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
+      amount: payout.total_amount,
+      merchantReference: payout.id,
+      customerBankReference: "PayShield",
+      isRtc: false,
+
+      // 🔥 IMPORTANT: Correct casing
+      NotifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
+      VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
+
+      bankingDetails: {
+        bankGroupId: bankDetails.bank_group_id,
+        accountNumber: encryptedAccount,
+        branchCode: bankDetails.branch_code,
+      },
+      hashCheck: hash,
+    };
+
+    // 🔍 DEBUG LOG (VERY IMPORTANT)
+    console.log("📤 OZOW REQUEST BODY:");
+    console.log(JSON.stringify(requestBody, null, 2));
 
     // 🚀 Call Ozow
     const response = await axios.post(
@@ -173,7 +180,7 @@ router.post("/:id/process", async (req, res) => {
       }
     );
 
-    // 💾 Save to DB (for audit only)
+    // 💾 Save to DB
     await supabase
       .from("payouts")
       .update({
