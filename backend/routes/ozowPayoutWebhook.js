@@ -1,111 +1,96 @@
 import express from "express";
-import { supabase } from "../lib/supabaseClient.js";
 
 const router = express.Router();
 const ACCESS_TOKEN = process.env.OZOW_ACCESS_TOKEN;
 
-// ✅ Payout webhook
-router.post("/notify", async (req, res) => {
-  console.log("🔥 OZOW WEBHOOK RECEIVED");
+// In-memory key store
+global.payoutKeys = global.payoutKeys || {};
+
+// ======================================================
+// ✅ STEP 3: VERIFY WEBHOOK (CRITICAL)
+// ======================================================
+
+router.post("/verify", async (req, res) => {
+console.log("🔥🔥🔥 VERIFY ENDPOINT HIT 🔥🔥🔥");
+  console.log("🔥 OZOW VERIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    // 🔐 Validate Ozow AccessToken (MUST BE INSIDE ROUTE)
-    const incomingToken = req.headers.accesstoken;
+    const incomingToken = Object.entries(req.headers).find(
+  ([key]) => key.toLowerCase() === "accesstoken"
+)?.[1];
+console.log("🔐 Incoming Token:", incomingToken);
+console.log("🔐 Expected Token:", ACCESS_TOKEN);
 
     if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
       console.log("❌ Invalid AccessToken");
 
       return res.status(200).json({
-        payoutId: "",
-        isVerified: false,
-        accountNumberDecryptionKey: "",
-        reason: "Invalid AccessToken",
+        PayoutId: "",
+        IsVerified: false,
+        AccountNumberDecryptionKey: "",
+        Reason: "Invalid AccessToken",
       });
     }
 
-    const data = req.body;
+    // ✅ DEFINE FIRST
+    const payoutId = req.body.payoutId;
 
-    const payoutId = data.payoutId || data.merchantReference;
+    console.log("🔑 VERIFY KEY CHECK:", payoutId, global.payoutKeys[payoutId]);
 
-    if (!payoutId) {
-      console.log("❌ Missing payout reference");
+    const key =
+      global.payoutKeys[payoutId] ||
+      global.payoutKeys[req.body.merchantReference];
+
+    console.log("🔑 VERIFY KEY:", payoutId, key);
+
+    return res.status(200).json({
+      PayoutId: payoutId,
+     IsVerified: !!key,
+///IsVerified: true,
+      AccountNumberDecryptionKey: key || "",
+      Reason: key ? "" : "Missing encryption key",
+    });
+
+  } catch (err) {
+    console.error("❌ VERIFY ERROR:", err.message);
+    return res.status(200).send("OK");
+  }
+});
+
+// ======================================================
+// ✅ STEP 4: NOTIFY WEBHOOK (STATUS UPDATES)
+// ======================================================
+router.post("/notify", async (req, res) => {
+  console.log("🔥 OZOW NOTIFY WEBHOOK");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  try {
+    const incomingToken = Object.entries(req.headers).find(
+  ([key]) => key.toLowerCase() === "accesstoken"
+)?.[1];
+console.log("🔐 Incoming Token:", incomingToken);
+console.log("🔐 Expected Token:", ACCESS_TOKEN);
+
+    if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
+      console.log("❌ Invalid AccessToken");
       return res.status(200).send("OK");
     }
 
-    const status = data.status || data.payoutStatus?.status;
+    const data = req.body;
+    const payoutId = data.payoutId;
 
-// ==================================================
-// 🔥 VERIFICATION HANDLER (CORRECT DETECTION)
-// ==================================================
-if (data.hashCheck && data.accountNumber) {
-  console.log("✅ Verification request detected:", payoutId);
+    const status = data.payoutStatus?.status;
+    const subStatus = data.payoutStatus?.subStatus;
 
-  const { data: payout } = await supabase
-    .from("payouts")
-    .select("*")
-    .eq("id", payoutId)
-    .single();
+    console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-  if (!payout || !payout.encryption_key) {
-    console.log("❌ Missing encryption key");
-
-    return res.status(200).json({
-      payoutId: payoutId,
-      isVerified: false,
-      accountNumberDecryptionKey: "",
-      reason: "Missing encryption key",
-    });
-  }
-
-  return res.status(200).json({
-    payoutId: payoutId,
-    isVerified: true,
-    accountNumberDecryptionKey: payout.encryption_key,
-    reason: "",
-  });
-}
-
-
-    // ==================================================
-    // 🔄 NORMAL STATUS HANDLING
-    // ==================================================
-    let newStatus = "FAILED";
-    let eventType = "UNKNOWN";
-
-    if (status === "VerificationSuccess") {
-      newStatus = "PROCESSING";
-      eventType = "VERIFICATION_SUCCESS";
-    }
-
-    if (status === "Complete" || status === "COMPLETED") {
-      newStatus = "COMPLETED";
-      eventType = "PAYOUT_COMPLETED";
-    }
-
-    if (status === "Cancelled") {
-      newStatus = "FAILED";
-      eventType = "PAYOUT_CANCELLED";
-    }
-
-    await supabase
-      .from("payouts")
-      .update({
-        status: newStatus,
-        completed_at:
-          newStatus === "COMPLETED"
-            ? new Date().toISOString()
-            : null,
-        last_error: data.errorMessage || null,
-      })
-      .eq("id", payoutId);
-
-    console.log(`✅ ${eventType} → Payout ${payoutId} → ${newStatus}`);
+    // 👉 You can update DB here if needed
 
     return res.status(200).send("OK");
 
   } catch (err) {
-    console.error("❌ Payout webhook error:", err.message);
+    console.error("❌ NOTIFY ERROR:", err.message);
     return res.status(200).send("OK");
   }
 });

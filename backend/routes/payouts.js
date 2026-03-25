@@ -12,12 +12,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// 🔁 Using MOCK for now
-//const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/mock/v1";
- const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
+// 🔁 Live staging endpoint
+const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
+
+// 🌍 GLOBAL KEY STORE (VERY IMPORTANT)
+global.payoutKeys = global.payoutKeys || {};
 
 /* =====================================================
-   📥 GET ALL PAYOUTS (for frontend)
+   📥 GET ALL PAYOUTS
 ===================================================== */
 router.get("/", async (req, res) => {
   try {
@@ -64,7 +66,7 @@ router.post("/:id/process", async (req, res) => {
   const payoutId = req.params.id;
 
   try {
-    if (!process.env.OZOW_API_KEY || !process.env.OZOW_SITE_CODE) {
+    if (!process.env.OZOW_PAYOUT_API_KEY || !process.env.OZOW_PAYOUT_SITE_CODE) {
       throw new Error("Ozow credentials not configured");
     }
 
@@ -80,9 +82,7 @@ router.post("/:id/process", async (req, res) => {
     }
 
     if (payout.payout_method !== "bank") {
-      return res.status(400).json({
-        error: "Only bank payouts supported",
-      });
+      return res.status(400).json({ error: "Only bank payouts supported" });
     }
 
     if (!["CREATED", "FAILED"].includes(payout.status)) {
@@ -105,8 +105,8 @@ router.post("/:id/process", async (req, res) => {
     // 3️⃣ Attempt count
     const attemptCount = (payout.attempt_count || 0) + 1;
 
-    // 4️⃣ Set PROCESSING first
-    const { error: updateError } = await supabase
+    // 4️⃣ Update status first
+    await supabase
       .from("payouts")
       .update({
         status: "PROCESSING",
@@ -115,11 +115,10 @@ router.post("/:id/process", async (req, res) => {
       })
       .eq("id", payoutId);
 
-    if (updateError) throw updateError;
-
-    // 🔐 Encryption
+    // 🔐 Generate encryption key
     const encryptionKey = crypto.randomBytes(16).toString("hex");
 
+    // 🔐 Encrypt account
     const encryptedAccount = encryptAccountNumber(
       bankDetails.account_number,
       encryptionKey,
@@ -127,40 +126,40 @@ router.post("/:id/process", async (req, res) => {
       payout.total_amount
     );
 
-    // 🔑 Hash
+    // 🔥 STORE KEY FOR WEBHOOK (THIS FIXES YOUR ERROR)
+    global.payoutKeys[payout.id] = encryptionKey;
+
+    // 🔑 Generate hash
     const hash = generateOzowHash({
-  SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
-  amount: payout.total_amount,
-  merchantReference: payout.id,
-  customerBankReference: "PayShield",
-  isRtc: false,
-  notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
-  bankGroupId: bankDetails.bank_group_id,
-  accountNumber: encryptedAccount,
-  branchCode: bankDetails.branch_code,
-  ApiKey: process.env.OZOW_PAYOUT_API_KEY,
-});
-
-    console.log("🚀 Sending to Ozow:", {
-      payoutId,
-      attemptCount,
-      amount: payout.total_amount,
-    });
-
-    const requestBody = {
       SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
       amount: payout.total_amount,
       merchantReference: payout.id,
       customerBankReference: "PayShield",
       isRtc: false,
       notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
-      bankingDetails: {
-        bankGroupId: bankDetails.bank_group_id,
-        accountNumber: encryptedAccount,
-        branchCode: bankDetails.branch_code,
-      },
-      hashCheck: hash,
-    };
+      bankGroupId: bankDetails.bank_group_id,
+      accountNumber: encryptedAccount,
+      branchCode: bankDetails.branch_code,
+      ApiKey: process.env.OZOW_PAYOUT_API_KEY,
+    });
+
+    console.log("🚀 Sending payout to Ozow:", payoutId);
+
+    const requestBody = {
+  SiteCode: process.env.OZOW_PAYOUT_SITE_CODE,
+  amount: payout.total_amount,
+  merchantReference: payout.id,
+  customerBankReference: "PayShield",
+  isRtc: false,
+  notifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
+  verifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL, // 🔥 ADD THIS
+  bankingDetails: {
+    bankGroupId: bankDetails.bank_group_id,
+    accountNumber: encryptedAccount,
+    branchCode: bankDetails.branch_code,
+  },
+  hashCheck: hash,
+};
 
     // 🚀 Call Ozow
     const response = await axios.post(
@@ -174,7 +173,7 @@ router.post("/:id/process", async (req, res) => {
       }
     );
 
-    // Save provider ref
+    // 💾 Save to DB (for audit only)
     await supabase
       .from("payouts")
       .update({
@@ -186,7 +185,6 @@ router.post("/:id/process", async (req, res) => {
     res.json({
       success: true,
       payoutId,
-      attempt: attemptCount,
       ozow: response.data,
     });
 
@@ -200,7 +198,6 @@ router.post("/:id/process", async (req, res) => {
       errorMessage = JSON.stringify(err.response.data);
     }
 
-    // Mark FAILED
     await supabase
       .from("payouts")
       .update({
@@ -217,3 +214,4 @@ router.post("/:id/process", async (req, res) => {
 });
 
 export default router;
+
