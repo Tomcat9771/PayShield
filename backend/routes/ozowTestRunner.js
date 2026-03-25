@@ -17,17 +17,20 @@ router.post("/run-all-tests", async (req, res) => {
   const siteCode = process.env.OZOW_PAYOUT_SITE_CODE;
   const apiKey = process.env.OZOW_PAYOUT_API_KEY;
   const notifyUrl = process.env.OZOW_PAYOUT_NOTIFY_URL;
+  const verifyUrl = process.env.OZOW_PAYOUT_VERIFY_URL;
 
   console.log("🚀 TEST RUNNER USING:");
   console.log("SITE CODE:", siteCode);
   console.log("API KEY:", apiKey ? "Loaded" : "Missing");
 
+  /* =====================================================
+     🚀 NORMAL PAYOUT TESTS
+  ===================================================== */
   async function runPayout(testName, config) {
     try {
       const merchantReference = `test-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      // 🔥 CDV FIX (skip encryption only for invalid account)
       const isCDVTest = config.accountNumber === "1234567890";
 
       const accountNumber = isCDVTest
@@ -40,23 +43,21 @@ router.post("/run-all-tests", async (req, res) => {
           );
 
       const payload = {
-  SiteCode: siteCode,
-  amount: config.amount,
-  merchantReference,
-  customerBankReference: "Test",
-  isRtc: false,
+        SiteCode: siteCode,
+        amount: config.amount,
+        merchantReference,
+        customerBankReference: "Test",
+        isRtc: false,
 
-  // 🔥 CRITICAL
-  NotifyUrl: notifyUrl,
-  VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
+        NotifyUrl: notifyUrl,
+        VerifyUrl: verifyUrl,
 
-  bankingDetails: {
-    bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
-    accountNumber: accountNumber,
-    branchCode: "632005",
-  },
-};
-
+        bankingDetails: {
+          bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+          accountNumber: accountNumber,
+          branchCode: "632005",
+        },
+      };
 
       const hashCheck = generateOzowHash({
         siteCode,
@@ -64,7 +65,7 @@ router.post("/run-all-tests", async (req, res) => {
         merchantReference: payload.merchantReference,
         customerBankReference: payload.customerBankReference,
         isRtc: payload.isRtc,
-        notifyUrl: payload.notifyUrl,
+        notifyUrl: payload.NotifyUrl,
         bankGroupId: payload.bankingDetails.bankGroupId,
         accountNumber: payload.bankingDetails.accountNumber,
         branchCode: payload.bankingDetails.branchCode,
@@ -108,7 +109,9 @@ router.post("/run-all-tests", async (req, res) => {
     accountNumber: "1234567890",
   });
 
-  // ================= MOCK TESTS =================
+  /* =====================================================
+     🧪 MOCK TESTS
+  ===================================================== */
   async function runMockTest(flagName) {
     try {
       await axios.post(
@@ -138,22 +141,21 @@ router.post("/run-all-tests", async (req, res) => {
       );
 
       const payload = {
-  SiteCode: siteCode,
-  amount: config.amount,
-  merchantReference,
-  customerBankReference: "Test",
-  isRtc: false,
+        SiteCode: siteCode,
+        amount: 0.1,
+        merchantReference,
+        customerBankReference: "Mock",
+        isRtc: false,
 
-  // 🔥 CRITICAL
-  NotifyUrl: notifyUrl,
-  VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
+        NotifyUrl: notifyUrl,
+        VerifyUrl: verifyUrl,
 
-  bankingDetails: {
-    bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
-    accountNumber: accountNumber,
-    branchCode: "632005",
-  },
-};
+        bankingDetails: {
+          bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+          accountNumber: encryptedAccount,
+          branchCode: "632005",
+        },
+      };
 
       const hashCheck = generateOzowHash({
         siteCode,
@@ -161,7 +163,7 @@ router.post("/run-all-tests", async (req, res) => {
         merchantReference: payload.merchantReference,
         customerBankReference: payload.customerBankReference,
         isRtc: payload.isRtc,
-        notifyUrl: payload.notifyUrl,
+        notifyUrl: payload.NotifyUrl,
         bankGroupId: payload.bankingDetails.bankGroupId,
         accountNumber: payload.bankingDetails.accountNumber,
         branchCode: payload.bankingDetails.branchCode,
