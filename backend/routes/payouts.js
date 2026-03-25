@@ -15,9 +15,6 @@ const supabase = createClient(
 // 🔁 Live staging endpoint
 const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
 
-// 🌍 GLOBAL KEY STORE (VERY IMPORTANT)
-global.payoutKeys = global.payoutKeys || {};
-
 /* =====================================================
    📥 GET ALL PAYOUTS
 ===================================================== */
@@ -105,16 +102,6 @@ router.post("/:id/process", async (req, res) => {
     // 3️⃣ Attempt count
     const attemptCount = (payout.attempt_count || 0) + 1;
 
-    // 4️⃣ Update status first
-    await supabase
-      .from("payouts")
-      .update({
-        status: "PROCESSING",
-        attempt_count: attemptCount,
-        last_error: null,
-      })
-      .eq("id", payoutId);
-
     // 🔐 Generate encryption key
     const encryptionKey = crypto.randomBytes(16).toString("hex");
 
@@ -126,8 +113,16 @@ router.post("/:id/process", async (req, res) => {
       payout.total_amount
     );
 
-    // 🔥 STORE KEY FOR WEBHOOK
-    global.payoutKeys[payout.id] = encryptionKey;
+    // 🔥 IMPORTANT: SAVE KEY BEFORE CALLING OZOW
+    await supabase
+      .from("payouts")
+      .update({
+        status: "PROCESSING",
+        attempt_count: attemptCount,
+        last_error: null,
+        encryption_key: encryptionKey,
+      })
+      .eq("id", payoutId);
 
     // 🔑 Generate hash
     const hash = generateOzowHash({
@@ -152,7 +147,7 @@ router.post("/:id/process", async (req, res) => {
       customerBankReference: "PayShield",
       isRtc: false,
 
-      // 🔥 IMPORTANT: Correct casing
+      // 🔥 Correct casing
       NotifyUrl: process.env.OZOW_PAYOUT_NOTIFY_URL,
       VerifyUrl: process.env.OZOW_PAYOUT_VERIFY_URL,
 
@@ -164,7 +159,6 @@ router.post("/:id/process", async (req, res) => {
       hashCheck: hash,
     };
 
-    // 🔍 DEBUG LOG (VERY IMPORTANT)
     console.log("📤 OZOW REQUEST BODY:");
     console.log(JSON.stringify(requestBody, null, 2));
 
@@ -180,12 +174,11 @@ router.post("/:id/process", async (req, res) => {
       }
     );
 
-    // 💾 Save to DB
+    // 💾 Save provider reference
     await supabase
       .from("payouts")
       .update({
         provider_ref: response.data.payoutId,
-        encryption_key: encryptionKey,
       })
       .eq("id", payoutId);
 
@@ -221,4 +214,3 @@ router.post("/:id/process", async (req, res) => {
 });
 
 export default router;
-

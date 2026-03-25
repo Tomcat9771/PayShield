@@ -1,54 +1,43 @@
 import express from "express";
+import { createClient } from "@supabase/supabase-js";
 
 const router = express.Router();
-const ACCESS_TOKEN = process.env.OZOW_ACCESS_TOKEN;
 
-// In-memory key store
-global.payoutKeys = global.payoutKeys || {};
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-// ======================================================
-// ✅ STEP 3: VERIFY WEBHOOK (CRITICAL)
-// ======================================================
+/* ======================================================
+   ✅ STEP 3: VERIFY WEBHOOK (CRITICAL)
+====================================================== */
 
 router.post("/verify", async (req, res) => {
-console.log("🔥🔥🔥 VERIFY ENDPOINT HIT 🔥🔥🔥");
+  console.log("🔥🔥🔥 VERIFY ENDPOINT HIT 🔥🔥🔥");
   console.log("🔥 OZOW VERIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    const incomingToken = Object.entries(req.headers).find(
-  ([key]) => key.toLowerCase() === "accesstoken"
-)?.[1];
-console.log("🔐 Incoming Token:", incomingToken);
-console.log("🔐 Expected Token:", ACCESS_TOKEN);
-
-    ///if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
-if (false) {
-      console.log("❌ Invalid AccessToken");
-
-      return res.status(200).json({
-        PayoutId: "",
-        IsVerified: false,
-        AccountNumberDecryptionKey: "",
-        Reason: "Invalid AccessToken",
-      });
-    }
-
-    // ✅ DEFINE FIRST
     const payoutId = req.body.payoutId;
 
-    console.log("🔑 VERIFY KEY CHECK:", payoutId, global.payoutKeys[payoutId]);
+    // 🔥 FETCH KEY FROM DATABASE (CRITICAL FIX)
+    const { data, error } = await supabase
+      .from("payouts")
+      .select("encryption_key")
+      .eq("id", payoutId)
+      .single();
 
-    const key =
-      global.payoutKeys[payoutId] ||
-      global.payoutKeys[req.body.merchantReference];
+    if (error) {
+      console.log("❌ DB ERROR:", error.message);
+    }
 
-    console.log("🔑 VERIFY KEY:", payoutId, key);
+    const key = data?.encryption_key;
+
+    console.log("🔑 VERIFY KEY FROM DB:", payoutId, key);
 
     return res.status(200).json({
       PayoutId: payoutId,
-     IsVerified: !!key,
-///IsVerified: true,
+      IsVerified: !!key,
       AccountNumberDecryptionKey: key || "",
       Reason: key ? "" : "Missing encryption key",
     });
@@ -59,25 +48,15 @@ if (false) {
   }
 });
 
-// ======================================================
-// ✅ STEP 4: NOTIFY WEBHOOK (STATUS UPDATES)
-// ======================================================
+/* ======================================================
+   ✅ STEP 4: NOTIFY WEBHOOK (STATUS UPDATES)
+====================================================== */
+
 router.post("/notify", async (req, res) => {
   console.log("🔥 OZOW NOTIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    const incomingToken = Object.entries(req.headers).find(
-  ([key]) => key.toLowerCase() === "accesstoken"
-)?.[1];
-console.log("🔐 Incoming Token:", incomingToken);
-console.log("🔐 Expected Token:", ACCESS_TOKEN);
-
-    if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
-      console.log("❌ Invalid AccessToken");
-      return res.status(200).send("OK");
-    }
-
     const data = req.body;
     const payoutId = data.payoutId;
 
@@ -86,7 +65,8 @@ console.log("🔐 Expected Token:", ACCESS_TOKEN);
 
     console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // 👉 You can update DB here if needed
+    // 👉 OPTIONAL: Update DB here
+    // await supabase.from("payouts").update({ status }).eq("id", payoutId);
 
     return res.status(200).send("OK");
 
