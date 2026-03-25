@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 /* ======================================================
-   ✅ STEP 3: VERIFY WEBHOOK (CRITICAL)
+   ✅ VERIFY WEBHOOK (CRITICAL - FIXED)
 ====================================================== */
 
 router.post("/verify", async (req, res) => {
@@ -24,8 +24,8 @@ router.post("/verify", async (req, res) => {
 
     let key = null;
 
-    // 🔥 1. Try provider_ref (normal case)
-    let { data } = await supabase
+    // ✅ 1. Try provider_ref (correct)
+    const { data } = await supabase
       .from("payouts")
       .select("encryption_key")
       .eq("provider_ref", payoutId)
@@ -33,37 +33,38 @@ router.post("/verify", async (req, res) => {
 
     key = data?.encryption_key;
 
-    // 🔥 2. FALLBACK (CRITICAL FIX for race condition)
+    // ✅ 2. FIXED FALLBACK (correct column)
     if (!key && merchantRef) {
-      console.log("⚠️ FALLBACK using merchantReference:", merchantRef);
+      console.log("⚠️ FALLBACK using merchant_ref:", merchantRef);
 
       const fallback = await supabase
         .from("payouts")
         .select("encryption_key")
-        .eq("id", merchantRef)
+        .eq("merchant_ref", merchantRef) // ✅ FIXED
         .maybeSingle();
 
       key = fallback.data?.encryption_key;
     }
 
-    console.log("📦 DB RESULT:", data);
     console.log("🔑 FINAL VERIFY KEY:", key);
 
+    // 🔥 CRITICAL: Return EXACT format Ozow expects
     return res.status(200).json({
-      PayoutId: payoutId,
-      IsVerified: !!key,
-      AccountNumberDecryptionKey: key || "",
-      Reason: key ? "" : "Missing encryption key",
+      isValid: !!key,
     });
 
   } catch (err) {
     console.error("❌ VERIFY ERROR:", err.message);
-    return res.status(200).send("OK");
+
+    // 🔥 Even on error, MUST return valid response
+    return res.status(200).json({
+      isValid: false,
+    });
   }
 });
 
 /* ======================================================
-   ✅ STEP 4: NOTIFY WEBHOOK (STATUS UPDATES)
+   ✅ NOTIFY WEBHOOK (UPDATED - IMPORTANT)
 ====================================================== */
 
 router.post("/notify", async (req, res) => {
@@ -79,15 +80,27 @@ router.post("/notify", async (req, res) => {
 
     console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // 🔥 OPTIONAL: Update payout status in DB
-    /*
-    await supabase
-      .from("payouts")
-      .update({
-        status: status === 1 ? "COMPLETED" : "FAILED"
-      })
-      .eq("provider_ref", payoutId);
-    */
+    // ✅ UPDATE DB STATUS (IMPORTANT FOR TEST CASES)
+    if (status === 1 && subStatus === 201) {
+      await supabase
+        .from("payouts")
+        .update({
+          status: "COMPLETED",
+          completed_at: new Date().toISOString(),
+          last_error: null,
+        })
+        .eq("provider_ref", payoutId);
+    }
+
+    if (status === 99) {
+      await supabase
+        .from("payouts")
+        .update({
+          status: "FAILED",
+          last_error: data.PayoutStatus?.ErrorMessage,
+        })
+        .eq("provider_ref", payoutId);
+    }
 
     return res.status(200).send("OK");
 
@@ -98,4 +111,3 @@ router.post("/notify", async (req, res) => {
 });
 
 export default router;
-

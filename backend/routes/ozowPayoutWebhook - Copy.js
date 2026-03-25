@@ -1,42 +1,59 @@
 import express from "express";
+import { createClient } from "@supabase/supabase-js";
 
 const router = express.Router();
-const ACCESS_TOKEN = process.env.OZOW_ACCESS_TOKEN;
 
-// In-memory key store (FAST ⚡)
-global.payoutKeys = global.payoutKeys || {};
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-// ✅ Payout webhook
-router.post("/notify", async (req, res) => {
-  console.log("🔥 OZOW WEBHOOK RECEIVED");
-  console.log(JSON.stringify(req.body, null, 2));
-//******************************************************************************************************************
+/* ======================================================
+   ✅ STEP 3: VERIFY WEBHOOK (CRITICAL)
+====================================================== */
+
 router.post("/verify", async (req, res) => {
-  console.log("🔥 OZOW VERIFICATION WEBHOOK");
+  console.log("🔥 OZOW VERIFY WEBHOOK");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
-    const incomingToken = req.headers.accesstoken;
+    const payoutId = req.body.PayoutId;
+    const merchantRef = req.body.MerchantReference;
 
-    if (!incomingToken || incomingToken !== process.env.OZOW_ACCESS_TOKEN) {
-      return res.status(200).json({
-        payoutId: "",
-        isVerified: false,
-        accountNumberDecryptionKey: "",
-        reason: "Invalid AccessToken",
-      });
+    console.log("🔍 Looking up payoutId:", payoutId);
+
+    let key = null;
+
+    // 🔥 1. Try provider_ref (normal case)
+    let { data } = await supabase
+      .from("payouts")
+      .select("encryption_key")
+      .eq("provider_ref", payoutId)
+      .maybeSingle();
+
+    key = data?.encryption_key;
+
+    // 🔥 2. FALLBACK (CRITICAL FIX for race condition)
+    if (!key && merchantRef) {
+      console.log("⚠️ FALLBACK using merchantReference:", merchantRef);
+
+      const fallback = await supabase
+        .from("payouts")
+        .select("encryption_key")
+        .eq("id", merchantRef)
+        .maybeSingle();
+
+      key = fallback.data?.encryption_key;
     }
 
-    const data = req.body;
-    const payoutId = data.payoutId;
-
-    const key = global.payoutKeys[payoutId];
+    console.log("📦 DB RESULT:", data);
+    console.log("🔑 FINAL VERIFY KEY:", key);
 
     return res.status(200).json({
-      payoutId,
-      isVerified: !!key,
-      accountNumberDecryptionKey: key || "",
-      reason: key ? "" : "Missing encryption key",
+      PayoutId: payoutId,
+      IsVerified: !!key,
+      AccountNumberDecryptionKey: key || "",
+      Reason: key ? "" : "Missing encryption key",
     });
 
   } catch (err) {
@@ -44,79 +61,41 @@ router.post("/verify", async (req, res) => {
     return res.status(200).send("OK");
   }
 });
-//**********************************************************************************************************************
+
+/* ======================================================
+   ✅ STEP 4: NOTIFY WEBHOOK (STATUS UPDATES)
+====================================================== */
+
+router.post("/notify", async (req, res) => {
+  console.log("🔥 OZOW NOTIFY WEBHOOK");
+  console.log(JSON.stringify(req.body, null, 2));
+
   try {
-
-
-    // 🔐 Validate AccessToken
-    const incomingToken = req.headers.accesstoken;
-
-    if (!incomingToken || incomingToken !== ACCESS_TOKEN) {
-      console.log("❌ Invalid AccessToken");
-
-      return res.status(200).json({
-        payoutId: "",
-        isVerified: false,
-        accountNumberDecryptionKey: "",
-        reason: "Invalid AccessToken",
-      });
-    }
-
     const data = req.body;
-    const payoutId = data.payoutId || data.merchantReference;
 
-    if (!payoutId) {
-      console.log("❌ Missing payout reference");
-      return res.status(200).send("OK");
-    }
+    const payoutId = data.PayoutId;
+    const status = data.PayoutStatus?.Status;
+    const subStatus = data.PayoutStatus?.SubStatus;
 
-    const status = data.status || data.payoutStatus?.status;
+    console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
 
-    // ==================================================
-    // 🔥 VERIFICATION HANDLER (FIXED - NO DB CALLS)
-    // ==================================================
-    if (data.hashCheck && data.bankingDetails?.accountNumber) {
-      console.log("✅ Verification request detected:", payoutId);
-
-      const key = global.payoutKeys[payoutId];
-
-      return res.status(200).json({
-        payoutId,
-        isVerified: !!key,
-        accountNumberDecryptionKey: key || "",
-        reason: key ? "" : "Missing encryption key",
-      });
-    }
-
-    // ==================================================
-    // 🔄 NORMAL STATUS HANDLING
-    // ==================================================
-    let newStatus = "FAILED";
-    let eventType = "UNKNOWN";
-
-    if (status === "VerificationSuccess" || status === 3) {
-      newStatus = "PROCESSING";
-      eventType = "VERIFICATION_SUCCESS";
-    }
-
-    if (status === "Complete" || status === "COMPLETED" || status === 5) {
-      newStatus = "COMPLETED";
-      eventType = "PAYOUT_COMPLETED";
-    }
-
-    if (status === "Cancelled" || status === 99) {
-      newStatus = "FAILED";
-      eventType = "PAYOUT_CANCELLED";
-    }
-
-    console.log(`✅ ${eventType} → Payout ${payoutId} → ${newStatus}`);
+    // 🔥 OPTIONAL: Update payout status in DB
+    /*
+    await supabase
+      .from("payouts")
+      .update({
+        status: status === 1 ? "COMPLETED" : "FAILED"
+      })
+      .eq("provider_ref", payoutId);
+    */
 
     return res.status(200).send("OK");
 
   } catch (err) {
-    console.error("❌ Payout webhook error:", err.message);
+    console.error("❌ NOTIFY ERROR:", err.message);
     return res.status(200).send("OK");
   }
 });
 
 export default router;
+
