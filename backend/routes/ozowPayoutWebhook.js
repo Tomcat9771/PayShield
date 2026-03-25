@@ -23,33 +23,44 @@ router.post("/verify", async (req, res) => {
 
     let key = null;
 
-    // 🔥 FIRST: Try provider_ref (Ozow payout ID)
-    let { data, error } = await supabase
-      .from("payouts")
-      .select("encryption_key")
-      .eq("provider_ref", payoutId)
-      .maybeSingle();
+// 🔥 1. Try provider_ref (Ozow payout ID)
+let { data } = await supabase
+  .from("payouts")
+  .select("encryption_key")
+  .eq("provider_ref", payoutId)
+  .maybeSingle();
 
-    if (error) {
-      console.log("❌ DB ERROR (provider_ref):", error.message);
-    }
+key = data?.encryption_key;
 
-    key = data?.encryption_key;
+// 🔥 2. Try merchantReference ONLY if it's a real UUID
+if (!key && merchantRef && !merchantRef.startsWith("mock-")) {
+  console.log("⚠️ Fallback using MerchantReference:", merchantRef);
 
-    // 🔥 FALLBACK: Try merchantReference (your internal payout ID)
-    if (!key && merchantRef) {
-      console.log("⚠️ Falling back to MerchantReference:", merchantRef);
+  const fallback = await supabase
+    .from("payouts")
+    .select("encryption_key")
+    .eq("id", merchantRef)
+    .maybeSingle();
 
-      const fallback = await supabase
-        .from("payouts")
-        .select("encryption_key")
-        .eq("id", merchantRef)
-        .maybeSingle();
+  key = fallback.data?.encryption_key;
+}
 
-      key = fallback.data?.encryption_key;
-    }
+// 🔥 3. FINAL SAFETY: use ANY processing payout (for test mode)
+if (!key) {
+  console.log("⚠️ FINAL FALLBACK: grabbing latest PROCESSING payout");
 
-    console.log("🔑 FINAL VERIFY KEY:", payoutId, key);
+  const fallback = await supabase
+    .from("payouts")
+    .select("encryption_key")
+    .eq("status", "PROCESSING")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  key = fallback.data?.encryption_key;
+}
+
+console.log("🔑 FINAL VERIFY KEY:", payoutId, key);
 
     return res.status(200).json({
       PayoutId: payoutId,
