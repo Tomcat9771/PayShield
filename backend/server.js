@@ -79,7 +79,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/ozow/qr", qrPayments);
 app.use("/api/ozow/registration", registrationPayments);
 app.use("/payouts", payoutsRouter);
-app.use("/ozow/payout", ozowPayoutWebhook);
+//app.use("/ozow/payout", ozowPayoutWebhook);
+app.use("/api/webhooks/ozow-payout", ozowPayoutWebhook);
 app.use("/scheduler", schedulerRoutes);
 app.use("/api/ozow", ozowTestRunner);
 /* =========================
