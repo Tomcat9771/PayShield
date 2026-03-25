@@ -100,28 +100,30 @@ router.post("/test-success", async (req, res) => {
     // =====================================================
     // 🔥🔥🔥 STEP 2: VERIFY PAYOUT (CRITICAL FIX)
     // =====================================================
+// 🔥🔥🔥 STEP 2: VERIFY PAYOUT (FIXED)
 
-    const verifyHash = generateOzowHash({
-      siteCode,
-      merchantReference,
-      payoutId,
+const verifyHash = generateOzowHash({
+  siteCode,
+  payoutId,
+  ApiKey: apiKey,
+});
+
+const verifyResponse = await axios.post(
+  `${OZOW_API}/verifypayout`,
+  {
+    siteCode,          // ⚠️ lowercase
+    payoutId,          // ⚠️ required
+    hashCheck: verifyHash,
+  },
+  {
+    headers: {
+      SiteCode: siteCode,
       ApiKey: apiKey,
-    });
+    },
+  }
+);
 
-    const verifyResponse = await axios.post(
-      `${OZOW_API}/verifypayout`,
-      {
-        SiteCode: siteCode,
-        merchantReference,
-        payoutId,
-        hashCheck: verifyHash,
-      },
-      {
-        headers: { SiteCode: siteCode, ApiKey: apiKey },
-      }
-    );
-
-    console.log("✅ VERIFY RESPONSE:", verifyResponse.data);
+console.log("✅ VERIFY RESPONSE:", verifyResponse.data);
 
     // 🔥 UPDATE DB BASED ON VERIFY
     const isSuccess =
