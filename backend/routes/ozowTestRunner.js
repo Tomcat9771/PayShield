@@ -17,6 +17,106 @@ const supabase = createClient(
 const OZOW_API = "https://stagingpayoutsapi.ozow.com/v1";
 const OZOW_MOCK_API = "https://stagingpayoutsapi.ozow.com/mock/v1";
 
+/* ======================================================
+   ✅ SUCCESS ONLY TEST (NEW - IMPORTANT)
+====================================================== */
+router.post("/test-success", async (req, res) => {
+  try {
+    const siteCode = process.env.OZOW_PAYOUT_SITE_CODE;
+    const apiKey = process.env.OZOW_PAYOUT_API_KEY;
+    const notifyUrl = process.env.OZOW_PAYOUT_NOTIFY_URL;
+    const verifyUrl = process.env.OZOW_PAYOUT_VERIFY_URL;
+
+    const merchantReference = `test-${Date.now()}`;
+    const encryptionKey = crypto.randomBytes(16).toString("hex");
+
+    // 🔥 INSERT FIRST
+    const { data, error } = await supabase
+      .from("payouts")
+      .insert({
+        id: crypto.randomUUID(),
+        merchant_ref: merchantReference,
+        provider_ref: null,
+        encryption_key: encryptionKey,
+        status: "PROCESSING",
+        total_amount: 10,
+        payout_method: "bank",
+      })
+      .select();
+
+    console.log("🧪 SUCCESS INSERT:", data, error);
+
+    const encryptedAccount = encryptAccountNumber(
+      "4050338500",
+      encryptionKey,
+      merchantReference,
+      10
+    );
+
+    const payload = {
+      SiteCode: siteCode,
+      amount: 10,
+      merchantReference,
+      customerBankReference: "Test",
+      isRtc: false,
+      NotifyUrl: notifyUrl,
+      VerifyUrl: verifyUrl,
+      bankingDetails: {
+        bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+        accountNumber: encryptedAccount,
+        branchCode: "632005",
+      },
+    };
+
+    const hashCheck = generateOzowHash({
+      siteCode,
+      amount: payload.amount,
+      merchantReference,
+      customerBankReference: payload.customerBankReference,
+      isRtc: payload.isRtc,
+      notifyUrl: payload.NotifyUrl,
+      bankGroupId: payload.bankingDetails.bankGroupId,
+      accountNumber: payload.bankingDetails.accountNumber,
+      branchCode: payload.bankingDetails.branchCode,
+      ApiKey: apiKey,
+    });
+
+    const response = await axios.post(
+      `${OZOW_API}/requestpayout`,
+      { ...payload, hashCheck },
+      {
+        headers: { SiteCode: siteCode, ApiKey: apiKey },
+      }
+    );
+
+    console.log("🔥 OZOW SUCCESS RESPONSE:", response.data);
+
+    const payoutId = response.data?.payoutId;
+
+    // 🔥 LINK provider_ref
+    await supabase
+      .from("payouts")
+      .update({ provider_ref: payoutId })
+      .eq("merchant_ref", merchantReference);
+
+    return res.json({
+      success: true,
+      payoutId,
+      merchantReference,
+    });
+
+  } catch (err) {
+    console.error("❌ SUCCESS TEST ERROR:", err.message);
+
+    return res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+
+/* ======================================================
+   ✅ RUN ALL TESTS (UNCHANGED BUT CLEANED)
+====================================================== */
 router.post("/run-all-tests", async (req, res) => {
   const results = [];
 
@@ -29,13 +129,11 @@ router.post("/run-all-tests", async (req, res) => {
   console.log("SITE CODE:", siteCode);
   console.log("API KEY:", apiKey ? "Loaded" : "Missing");
 
-  /* ================= NORMAL PAYOUT ================= */
   async function runPayout(testName, config) {
     try {
       const merchantReference = `test-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      // ✅ FIXED INSERT (includes required fields + logging)
       const { data, error } = await supabase
         .from("payouts")
         .insert({
@@ -52,7 +150,7 @@ router.post("/run-all-tests", async (req, res) => {
       console.log("🧪 INSERT RESULT:", data, error);
 
       const accountNumber = encryptAccountNumber(
-        config.accountNumber || "4050338500",
+        "4050338500",
         encryptionKey,
         merchantReference,
         config.amount
@@ -89,10 +187,10 @@ router.post("/run-all-tests", async (req, res) => {
       const response = await axios.post(
         `${OZOW_API}/requestpayout`,
         { ...payload, hashCheck },
-        {
-          headers: { SiteCode: siteCode, ApiKey: apiKey },
-        }
+        { headers: { SiteCode: siteCode, ApiKey: apiKey } }
       );
+
+      console.log(`🔥 ${testName} RESPONSE:`, response.data);
 
       const payoutId = response.data?.payoutId;
 
@@ -101,26 +199,18 @@ router.post("/run-all-tests", async (req, res) => {
         .update({ provider_ref: payoutId })
         .eq("merchant_ref", merchantReference);
 
-      results.push({
-        testName,
-        success: true,
-        payoutId,
-        response: response.data,
-      });
+      results.push({ testName, success: true, payoutId });
 
     } catch (error) {
       results.push({
         testName,
         success: false,
         error: error.message,
-        details: error.response?.data || null,
+        details: error.response?.data,
       });
     }
   }
 
-  await runPayout("SUCCESS", { amount: 10 });
-
-  /* ================= MOCK TEST ================= */
   async function runMockTest(flagName) {
     try {
       await axios.post(
@@ -137,21 +227,15 @@ router.post("/run-all-tests", async (req, res) => {
       const merchantReference = `mock-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      // ✅ FIXED INSERT HERE TOO
-      const { data, error } = await supabase
-        .from("payouts")
-        .insert({
-          id: crypto.randomUUID(),
-          merchant_ref: merchantReference,
-          provider_ref: null,
-          encryption_key: encryptionKey,
-          status: "PROCESSING",
-          total_amount: 0.1,
-          payout_method: "bank",
-        })
-        .select();
-
-      console.log("🧪 MOCK INSERT RESULT:", data, error);
+      await supabase.from("payouts").insert({
+        id: crypto.randomUUID(),
+        merchant_ref: merchantReference,
+        provider_ref: null,
+        encryption_key: encryptionKey,
+        status: "PROCESSING",
+        total_amount: 0.1,
+        payout_method: "bank",
+      });
 
       const encryptedAccount = encryptAccountNumber(
         "4050338500",
@@ -201,10 +285,7 @@ router.post("/run-all-tests", async (req, res) => {
         .update({ provider_ref: payoutId })
         .eq("merchant_ref", merchantReference);
 
-      results.push({
-        testName: `MOCK_${flagName}`,
-        payoutId,
-      });
+      results.push({ testName: `MOCK_${flagName}`, payoutId });
 
     } catch (error) {
       results.push({
@@ -215,10 +296,10 @@ router.post("/run-all-tests", async (req, res) => {
     }
   }
 
+  await runPayout("SUCCESS", { amount: 10 });
   await runMockTest("KEY_MISSING");
 
   return res.json({ results });
 });
 
 export default router;
-
