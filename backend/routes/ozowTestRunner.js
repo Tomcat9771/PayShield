@@ -35,8 +35,8 @@ router.post("/run-all-tests", async (req, res) => {
       const merchantReference = `test-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      // ✅ INSERT CORRECTLY
-      const { data: inserted } = await supabase
+      // ✅ FIXED INSERT (includes required fields + logging)
+      const { data, error } = await supabase
         .from("payouts")
         .insert({
           id: crypto.randomUUID(),
@@ -44,9 +44,12 @@ router.post("/run-all-tests", async (req, res) => {
           provider_ref: null,
           encryption_key: encryptionKey,
           status: "PROCESSING",
+          total_amount: config.amount,
+          payout_method: "bank",
         })
-        .select()
-        .single();
+        .select();
+
+      console.log("🧪 INSERT RESULT:", data, error);
 
       const accountNumber = encryptAccountNumber(
         config.accountNumber || "4050338500",
@@ -93,7 +96,6 @@ router.post("/run-all-tests", async (req, res) => {
 
       const payoutId = response.data?.payoutId;
 
-      // ✅ UPDATE USING merchant_ref
       await supabase
         .from("payouts")
         .update({ provider_ref: payoutId })
@@ -135,13 +137,21 @@ router.post("/run-all-tests", async (req, res) => {
       const merchantReference = `mock-${Date.now()}`;
       const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      await supabase.from("payouts").insert({
-        id: crypto.randomUUID(),
-        merchant_ref: merchantReference,
-        provider_ref: null,
-        encryption_key: encryptionKey,
-        status: "PROCESSING",
-      });
+      // ✅ FIXED INSERT HERE TOO
+      const { data, error } = await supabase
+        .from("payouts")
+        .insert({
+          id: crypto.randomUUID(),
+          merchant_ref: merchantReference,
+          provider_ref: null,
+          encryption_key: encryptionKey,
+          status: "PROCESSING",
+          total_amount: 0.1,
+          payout_method: "bank",
+        })
+        .select();
+
+      console.log("🧪 MOCK INSERT RESULT:", data, error);
 
       const encryptedAccount = encryptAccountNumber(
         "4050338500",
@@ -211,5 +221,4 @@ router.post("/run-all-tests", async (req, res) => {
 });
 
 export default router;
-
 
