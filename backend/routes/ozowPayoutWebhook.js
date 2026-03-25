@@ -19,19 +19,16 @@ router.post("/verify", async (req, res) => {
   try {
     const accessToken = req.headers.accesstoken;
 
-    // 🔒 AUTH CHECK
     if (accessToken !== process.env.OZOW_ACCESS_TOKEN) {
-      console.log("❌ Invalid AccessToken:", accessToken);
-
       return res.status(200).json({
-        payoutId: req.body.payoutId,
-        isVerified: false,
-        reason: "Invalid AccessToken",
+        PayoutId: req.body.payoutId,
+        IsVerified: false,
+        Reason: "Invalid AccessToken",
       });
     }
 
     const {
-      payoutId,
+      payoutId, // ✅ FIXED (lowercase)
       siteCode,
       amount,
       merchantReference,
@@ -44,7 +41,6 @@ router.post("/verify", async (req, res) => {
 
     const apiKey = process.env.OZOW_PAYOUT_API_KEY;
 
-    // 🔥 EXACT HASH ORDER REQUIRED BY OZOW
     const inputString =
       payoutId +
       siteCode +
@@ -64,16 +60,13 @@ router.post("/verify", async (req, res) => {
       .digest("hex");
 
     if (calculatedHash !== hashCheck) {
-      console.log("❌ HASH MISMATCH");
-
       return res.status(200).json({
-        payoutId,
-        isVerified: false,
-        reason: "Invalid hash",
+        PayoutId: payoutId,
+        IsVerified: false,
+        Reason: "Invalid hash",
       });
     }
 
-    // 🔎 FIND PAYOUT IN DB
     const { data: payout, error } = await supabase
       .from("payouts")
       .select("*")
@@ -81,31 +74,25 @@ router.post("/verify", async (req, res) => {
       .single();
 
     if (error || !payout) {
-      console.log("❌ Payout not found:", merchantReference);
-
       return res.status(200).json({
-        payoutId,
-        isVerified: false,
-        reason: "Payout not found",
+        PayoutId: payoutId,
+        IsVerified: false,
+        Reason: "Payout not found",
       });
     }
 
-    console.log("✅ VERIFIED → returning AES key");
-
     return res.status(200).json({
-      payoutId,
-      isVerified: true,
-      accountNumberDecryptionKey: payout.encryption_key,
-      reason: "",
+      PayoutId: payoutId,
+      IsVerified: true,
+      AccountNumberDecryptionKey: payout.encryption_key,
+      Reason: "",
     });
 
   } catch (err) {
-    console.error("❌ VERIFY ERROR:", err.message);
-
     return res.status(200).json({
-      payoutId: req.body?.payoutId,
-      isVerified: false,
-      reason: "Server error",
+      PayoutId: req.body?.payoutId,
+      IsVerified: false,
+      Reason: "Server error",
     });
   }
 });
@@ -121,13 +108,13 @@ router.post("/notify", async (req, res) => {
   try {
     const data = req.body;
 
-    const payoutId = data.PayoutId;
+    const PayoutId = data.PayoutId;
     const merchantRef = data.MerchantReference;
     const status = data.PayoutStatus?.Status;
     const subStatus = data.PayoutStatus?.SubStatus;
     const errorMessage = data.PayoutStatus?.ErrorMessage;
 
-    console.log(`📊 STATUS UPDATE: ${payoutId} → status=${status} sub=${subStatus}`);
+    console.log(`📊 STATUS UPDATE: ${PayoutId} → status=${status} sub=${subStatus}`);
 
     // 🔥 STEP 1: Ensure provider_ref exists
     const { data: existing } = await supabase
@@ -140,13 +127,13 @@ router.post("/notify", async (req, res) => {
       console.log("🧩 Linking provider_ref...");
       await supabase
         .from("payouts")
-        .update({ provider_ref: payoutId })
+        .update({ provider_ref: PayoutId })
         .eq("merchant_ref", merchantRef);
     }
 
     // 🔥 STEP 2: Build update payload ONCE
     let updateData = {
-      provider_ref: payoutId,
+      provider_ref: PayoutId,
       last_error: status === 99 ? errorMessage : null,
     };
 
@@ -164,7 +151,7 @@ router.post("/notify", async (req, res) => {
     let { data: updated } = await supabase
       .from("payouts")
       .update(updateData)
-      .eq("provider_ref", payoutId)
+      .eq("provider_ref", PayoutId)
       .select();
 
     // 🔥 STEP 4: Fallback to merchant_ref
@@ -185,6 +172,11 @@ router.post("/notify", async (req, res) => {
     console.error("❌ NOTIFY ERROR:", err.message);
     return res.status(200).send("OK");
   }
+});
+router.post("/payout-verify", async (req, res) => {
+  // just forward to /verify logic
+  req.url = "/verify";
+  return router.handle(req, res);
 });
 
 export default router;
