@@ -96,6 +96,13 @@ router.post("/run-all-tests", async (req, res) => {
           },
         }
       );
+const payoutId = response.data?.payoutId;
+
+// 🔥 CRITICAL: LINK OZOW ID TO YOUR RECORD
+await supabase
+  .from("payouts")
+  .update({ provider_ref: payoutId })
+  .eq("id", merchantReference);
 
       results.push({
         testName,
@@ -126,109 +133,116 @@ router.post("/run-all-tests", async (req, res) => {
   /* =====================================================
      🧪 MOCK TESTS
   ===================================================== */
-  async function runMockTest(flagName) {
-    try {
-      await axios.post(
-        `${OZOW_MOCK_API}/settestconfiguration?siteCode=${siteCode}`,
-        {
-          siteCode,
-          isAccountDecryptionFailed: flagName === "DECRYPT_FAIL",
-          isNotVerifiedResponse: flagName === "NOT_VERIFIED",
-          isAccountNumberDecryptionKeyMissing: flagName === "KEY_MISSING",
-        },
-        {
-          headers: {
-            SiteCode: siteCode,
-            ApiKey: apiKey,
-          },
-        }
-      );
-
-      const merchantReference = `mock-${Date.now()}`;
-      const encryptionKey = crypto.randomBytes(16).toString("hex");
-
-      // 🔥 STORE KEY IN DB (CRITICAL FIX)
-      await supabase.from("payouts").insert({
-        id: merchantReference,
-        provider_ref: null,
-        encryption_key: encryptionKey,
-        status: "PROCESSING",
-      });
-
-      const encryptedAccount = encryptAccountNumber(
-        "4050338500",
-        encryptionKey,
-        merchantReference,
-        0.1
-      );
-
-      const payload = {
-        SiteCode: siteCode,
-        amount: 0.1,
-        merchantReference,
-        customerBankReference: "Mock",
-        isRtc: false,
-
-        NotifyUrl: notifyUrl,
-        VerifyUrl: verifyUrl,
-
-        bankingDetails: {
-          bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
-          accountNumber: encryptedAccount,
-          branchCode: "632005",
-        },
-      };
-
-      const hashCheck = generateOzowHash({
+async function runMockTest(flagName) {
+  try {
+    await axios.post(
+      `${OZOW_MOCK_API}/settestconfiguration?siteCode=${siteCode}`,
+      {
         siteCode,
-        amount: payload.amount,
-        merchantReference: payload.merchantReference,
-        customerBankReference: payload.customerBankReference,
-        isRtc: payload.isRtc,
-        notifyUrl: payload.NotifyUrl,
-        bankGroupId: payload.bankingDetails.bankGroupId,
-        accountNumber: payload.bankingDetails.accountNumber,
-        branchCode: payload.bankingDetails.branchCode,
-        ApiKey: apiKey,
-      });
+        isAccountDecryptionFailed: flagName === "DECRYPT_FAIL",
+        isNotVerifiedResponse: flagName === "NOT_VERIFIED",
+        isAccountNumberDecryptionKeyMissing: flagName === "KEY_MISSING",
+      },
+      {
+        headers: {
+          SiteCode: siteCode,
+          ApiKey: apiKey,
+        },
+      }
+    );
 
-      const payout = await axios.post(
-        `${OZOW_MOCK_API}/requestpayout`,
-        { ...payload, hashCheck },
-        {
-          headers: {
-            SiteCode: siteCode,
-            ApiKey: apiKey,
-          },
-        }
-      );
+    // ✅ FIRST define merchantReference
+    const merchantReference = `mock-${Date.now()}`;
+    const encryptionKey = crypto.randomBytes(16).toString("hex");
 
-      const payoutId = payout.data.payoutId;
+    // 🔥 STORE KEY IN DB
+    await supabase.from("payouts").insert({
+      id: merchantReference,
+      provider_ref: null,
+      encryption_key: encryptionKey,
+      status: "PROCESSING",
+    });
 
-      const result = await axios.get(
-        `${OZOW_MOCK_API}/getpayout?payoutId=${payoutId}`,
-        {
-          headers: {
-            SiteCode: siteCode,
-            ApiKey: apiKey,
-          },
-        }
-      );
+    const encryptedAccount = encryptAccountNumber(
+      "4050338500",
+      encryptionKey,
+      merchantReference,
+      0.1
+    );
 
-      results.push({
-        testName: `MOCK_${flagName}`,
-        payoutId,
-        response: result.data,
-      });
+    const payload = {
+      SiteCode: siteCode,
+      amount: 0.1,
+      merchantReference,
+      customerBankReference: "Mock",
+      isRtc: false,
 
-    } catch (error) {
-      results.push({
-        testName: `MOCK_${flagName}`,
-        error: error.message,
-        details: error.response?.data,
-      });
-    }
+      NotifyUrl: notifyUrl,
+      VerifyUrl: verifyUrl,
+
+      bankingDetails: {
+        bankGroupId: "3284a0ad-ba78-4838-8c2b-102981286a2b",
+        accountNumber: encryptedAccount,
+        branchCode: "632005",
+      },
+    };
+
+    const hashCheck = generateOzowHash({
+      siteCode,
+      amount: payload.amount,
+      merchantReference: payload.merchantReference,
+      customerBankReference: payload.customerBankReference,
+      isRtc: payload.isRtc,
+      notifyUrl: payload.NotifyUrl,
+      bankGroupId: payload.bankingDetails.bankGroupId,
+      accountNumber: payload.bankingDetails.accountNumber,
+      branchCode: payload.bankingDetails.branchCode,
+      ApiKey: apiKey,
+    });
+
+    const payout = await axios.post(
+      `${OZOW_MOCK_API}/requestpayout`,
+      { ...payload, hashCheck },
+      {
+        headers: {
+          SiteCode: siteCode,
+          ApiKey: apiKey,
+        },
+      }
+    );
+
+    const payoutId = payout.data.payoutId;
+
+    // 🔥 LINK provider_ref AFTER payout is created
+    await supabase
+      .from("payouts")
+      .update({ provider_ref: payoutId })
+      .eq("id", merchantReference);
+
+    const result = await axios.get(
+      `${OZOW_MOCK_API}/getpayout?payoutId=${payoutId}`,
+      {
+        headers: {
+          SiteCode: siteCode,
+          ApiKey: apiKey,
+        },
+      }
+    );
+
+    results.push({
+      testName: `MOCK_${flagName}`,
+      payoutId,
+      response: result.data,
+    });
+
+  } catch (error) {
+    results.push({
+      testName: `MOCK_${flagName}`,
+      error: error.message,
+      details: error.response?.data,
+    });
   }
+}
 
   await runMockTest("DECRYPT_FAIL");
   await runMockTest("NOT_VERIFIED");
