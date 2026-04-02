@@ -15,6 +15,22 @@ const supabase = createClient(
 
 const OZOW_BASE_URL = "https://stagingpayoutsapi.ozow.com/v1";
 
+function buildIdempotentReplayResponse(idempotentMatch, payoutId) {
+  const terminalSuccessStatuses = new Set(["PAID_OUT"]);
+  const terminalFailureStatuses = new Set(["FAILED"]);
+  const isSuccess = terminalSuccessStatuses.has(idempotentMatch.status);
+  const isFailure = terminalFailureStatuses.has(idempotentMatch.status);
+
+  return {
+    success: isSuccess,
+    payoutId,
+    transactionId: idempotentMatch.id,
+    idempotentReplay: true,
+    transactionStatus: idempotentMatch.status,
+    error: isFailure ? "Previous attempt failed" : undefined,
+  };
+}
+
 async function fetchPayoutWithTransactions(payoutId) {
   const { data: payout, error: payoutError } = await supabase
     .from("payouts")
@@ -117,12 +133,8 @@ router.post("/:id/process", async (req, res) => {
       );
 
       if (idempotentMatch) {
-        return res.json({
-          success: true,
-          payoutId,
-          transactionId: idempotentMatch.id,
-          idempotentReplay: true,
-        });
+        const replayResponse = buildIdempotentReplayResponse(idempotentMatch, payoutId);
+        return res.status(replayResponse.success ? 200 : 409).json(replayResponse);
       }
     }
 

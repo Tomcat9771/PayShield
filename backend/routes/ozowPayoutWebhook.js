@@ -191,19 +191,29 @@ router.post("/notify", async (req, res) => {
         .from("transactions")
         .select("id")
         .eq("payout_id", payoutId)
-        .order("created_at", { ascending: false })
+        .eq("provider_ref", PayoutId)
         .limit(1);
 
-      const latestAttemptId = attempts?.[0]?.id;
+      const matchingAttemptId = attempts?.[0]?.id;
 
-      if (latestAttemptId) {
+      if (matchingAttemptId) {
         await supabase
           .from("transactions")
           .update({
             status: transactionStatus,
             provider_ref: PayoutId,
           })
-          .eq("id", latestAttemptId);
+          .eq("id", matchingAttemptId);
+      } else {
+        await supabase
+          .from("transactions")
+          .update({
+            status: transactionStatus,
+            provider_ref: PayoutId,
+          })
+          .eq("payout_id", payoutId)
+          .is("provider_ref", null)
+          .in("status", ["PROCESSING", "PENDING"]);
       }
     }
 
