@@ -61,6 +61,9 @@ python backend/scripts/ozow_payout_certification.py \
   --site-code "$OZOW_PAYOUT_SITE_CODE" \
   --api-key "$OZOW_PAYOUT_API_KEY" \
   --notify-url "$OZOW_PAYOUT_NOTIFY_URL" \
+  --verify-url "$OZOW_PAYOUT_VERIFY_URL" \
+  --access-token "$OZOW_ACCESS_TOKEN" \
+  --website-url "https://payshield.shieldsconsulting.co.za/" \
   --output-dir artifacts/ozow
 ```
 

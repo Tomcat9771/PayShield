@@ -109,11 +109,18 @@ def http_json(
         return {"status": 0, "json": None, "text": str(err)}
 
 
+
+
+def is_success_status(status: Optional[int]) -> bool:
+    return status is not None and 0 < int(status) < 400
+
+
 def build_request_payload(
     *,
     site_code: str,
     api_key: str,
     notify_url: str,
+    verify_url: Optional[str],
     amount: float,
     account_number: str,
     bank_group_id: str,
@@ -134,6 +141,8 @@ def build_request_payload(
             "branchCode": branch_code,
         },
     }
+    if verify_url:
+        payload["VerifyUrl"] = verify_url
     payload["hashCheck"] = hash_request_payout(
         site_code=site_code,
         amount=amount,
@@ -168,6 +177,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
             site_code=args.site_code,
             api_key=args.api_key,
             notify_url=args.notify_url,
+            verify_url=args.verify_url,
             amount=amount,
             account_number=account,
             bank_group_id=args.bank_group_id,
@@ -179,6 +189,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
             TestResult(
                 name=name,
                 category="standard",
+                status="pass" if is_success_status(response["status"]) else "fail",
                 status="pass" if response["status"] < 400 else "fail",
                 timestamp_utc=now_utc(),
                 request=payload,
@@ -193,6 +204,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
         site_code=args.site_code,
         api_key=args.api_key,
         notify_url=args.notify_url,
+        verify_url=args.verify_url,
         amount=10.00,
         account_number=DEFAULT_ACCOUNT,
         bank_group_id=args.bank_group_id,
@@ -207,6 +219,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
         TestResult(
             name="Request payout success candidate",
             category="standard",
+            status="pass" if is_success_status(success_request["status"]) else "fail",
             status="pass" if success_request["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request=success_payload,
@@ -228,6 +241,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
             TestResult(
                 name="Receive verification request and respond successfully",
                 category="standard",
+                status="pass" if is_success_status(verify_response["status"]) else "fail",
                 status="pass" if verify_response["status"] < 400 else "fail",
                 timestamp_utc=now_utc(),
                 request=verify_payload,
@@ -247,6 +261,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
             TestResult(
                 name="Get payout status",
                 category="standard",
+                status="pass" if is_success_status(get_response["status"]) else "fail",
                 status="pass" if get_response["status"] < 400 else "fail",
                 timestamp_utc=now_utc(),
                 request={"payoutId": payout_ids["success"]},
@@ -288,6 +303,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
         site_code=args.site_code,
         api_key=args.api_key,
         notify_url=args.notify_url,
+        verify_url=args.verify_url,
         amount=10.00,
         account_number=DEFAULT_ACCOUNT,
         bank_group_id=args.bank_group_id,
@@ -316,6 +332,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
         site_code=args.site_code,
         api_key=args.api_key,
         notify_url=args.notify_url,
+        verify_url=args.verify_url,
         amount=10.00,
         account_number="1234567890",
         bank_group_id=args.bank_group_id,
@@ -330,6 +347,7 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
         TestResult(
             name="CDV error account number validation",
             category="standard",
+            status="pass" if is_success_status(cdv_response["status"]) else "fail",
             status="pass" if cdv_response["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request=cdv_payload,
@@ -346,6 +364,12 @@ def run_standard_tests(args: argparse.Namespace, report: List[TestResult]) -> Di
             category="standard",
             status="manual",
             timestamp_utc=now_utc(),
+            request={
+                "emails": [item.strip() for item in args.low_float_alert_emails.split(",") if item.strip()],
+                "contactName": args.low_float_alert_contact,
+                "contactPhones": args.low_float_alert_phones,
+                "threshold": "R99.00",
+            },
             request={"email": "tshields@hotmail.co.za", "threshold": "R99.00"},
             response_status=None,
             response_json=None,
@@ -372,6 +396,7 @@ def run_mock_test(
         TestResult(
             name=f"{case_name}: getTestConfiguration (before)",
             category="mock",
+            status="pass" if is_success_status(current_cfg["status"]) else "fail",
             status="pass" if current_cfg["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request={"siteCode": args.site_code},
@@ -399,6 +424,7 @@ def run_mock_test(
         TestResult(
             name=f"{case_name}: setTestConfiguration",
             category="mock",
+            status="pass" if is_success_status(set_cfg["status"]) else "fail",
             status="pass" if set_cfg["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request=cfg_payload,
@@ -413,6 +439,7 @@ def run_mock_test(
         TestResult(
             name=f"{case_name}: getTestConfiguration (after)",
             category="mock",
+            status="pass" if is_success_status(verify_cfg["status"]) else "fail",
             status="pass" if verify_cfg["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request={"siteCode": args.site_code},
@@ -426,6 +453,7 @@ def run_mock_test(
         site_code=args.site_code,
         api_key=args.api_key,
         notify_url=args.notify_url,
+        verify_url=args.verify_url,
         amount=0.1,
         account_number=DEFAULT_ACCOUNT,
         bank_group_id=args.bank_group_id,
@@ -438,6 +466,7 @@ def run_mock_test(
         TestResult(
             name=f"{case_name}: requestpayout",
             category="mock",
+            status="pass" if is_success_status(request_result["status"]) else "fail",
             status="pass" if request_result["status"] < 400 else "fail",
             timestamp_utc=now_utc(),
             request=payout_payload,
@@ -458,6 +487,7 @@ def run_mock_test(
             TestResult(
                 name=f"{case_name}: getpayout",
                 category="mock",
+                status="pass" if is_success_status(get_payout["status"]) else "fail",
                 status="pass" if get_payout["status"] < 400 else "fail",
                 timestamp_utc=now_utc(),
                 request={"payoutId": payout_id},
@@ -543,6 +573,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--site-code", required=True)
     parser.add_argument("--api-key", required=True)
     parser.add_argument("--notify-url", required=True)
+    parser.add_argument("--verify-url", default=None)
+    parser.add_argument("--access-token", default=None)
+    parser.add_argument("--website-url", default=None)
+    parser.add_argument("--low-float-alert-contact", default="Mr. Tommy Shields")
+    parser.add_argument("--low-float-alert-phones", default="082 462 7991")
+    parser.add_argument("--low-float-alert-emails", default="tshields@hotmail.co.za,tommy@shieldsconsulting.co.za")
     parser.add_argument("--bank-group-id", default=DEFAULT_BANK_GROUP_ID)
     parser.add_argument("--branch-code", default=DEFAULT_BRANCH_CODE)
     parser.add_argument("--output-dir", default="artifacts/ozow")
@@ -579,6 +615,10 @@ def main() -> int:
     metadata = {
         "generated_utc": now_utc(),
         "site_code": args.site_code,
+        "website_url": args.website_url,
+        "notify_url": args.notify_url,
+        "verify_url": args.verify_url,
+        "access_token_configured": bool(args.access_token),
         "payout_ids": payout_ids,
     }
 
