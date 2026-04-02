@@ -51,3 +51,26 @@ Admin (requires `Authorization: Bearer <token>`):
 - `GET /api/payouts`
 
 See `routes/` for implementation details.
+
+## Ozow payout certification runner
+
+Use the script below to execute the Ozow certification test pack (9 standard + 3 mock tests), capture raw JSON responses, and generate a shareable Word report:
+
+```bash
+python backend/scripts/ozow_payout_certification.py \
+  --site-code "$OZOW_PAYOUT_SITE_CODE" \
+  --api-key "$OZOW_PAYOUT_API_KEY" \
+  --notify-url "$OZOW_PAYOUT_NOTIFY_URL" \
+  --verify-url "$OZOW_PAYOUT_VERIFY_URL" \
+  --access-token "$OZOW_ACCESS_TOKEN" \
+  --website-url "https://payshield.shieldsconsulting.co.za/" \
+  --output-dir artifacts/ozow
+```
+
+Outputs:
+- `artifacts/ozow/ozow-certification-report.json`
+- `artifacts/ozow/ozow-certification-report.docx`
+
+Notes:
+- Manual evidence is still required for asynchronous dashboard/email-only checks (verificationSuccess notification, payout complete notification, payout cancelled, low float alert email screenshot).
+- CDV error is requested with account number `1234567890` as per Ozow's test guidance.
