@@ -78,7 +78,7 @@ router.post("/test-success", async (req, res) => {
       ApiKey: apiKey,
     });
 
-    // 🔥 STEP 1: REQUEST PAYOUT
+    // 🔥 REQUEST PAYOUT ONLY (NO VERIFY CALL)
     const response = await axios.post(
       `${OZOW_API}/requestpayout`,
       { ...payload, hashCheck },
@@ -97,51 +97,14 @@ router.post("/test-success", async (req, res) => {
       .update({ provider_ref: payoutId })
       .eq("merchant_ref", merchantReference);
 
-    // =====================================================
-    // 🔥🔥🔥 STEP 2: VERIFY PAYOUT (CRITICAL FIX)
-    // =====================================================
-// 🔥🔥🔥 STEP 2: VERIFY PAYOUT (FIXED)
-
-const verifyHash = generateOzowHash({
-  siteCode,
-  payoutId,
-  ApiKey: apiKey,
-});
-
-const verifyResponse = await axios.post(
-  `${OZOW_API}/verifypayout`,
-  {
-    siteCode,          // ⚠️ lowercase
-    payoutId,          // ⚠️ required
-    hashCheck: verifyHash,
-  },
-  {
-    headers: {
-      SiteCode: siteCode,
-      ApiKey: apiKey,
-    },
-  }
-);
-
-console.log("✅ VERIFY RESPONSE:", verifyResponse.data);
-
-    // 🔥 UPDATE DB BASED ON VERIFY
-    const isSuccess =
-      verifyResponse.data?.payoutStatus?.status === 1 &&
-      verifyResponse.data?.payoutStatus?.subStatus === 201;
-
-    await supabase
-      .from("payouts")
-      .update({
-        status: isSuccess ? "COMPLETED" : "FAILED",
-        completed_at: isSuccess ? new Date().toISOString() : null,
-      })
-      .eq("merchant_ref", merchantReference);
+    // 🚀 DONE — Ozow will now:
+    // 1. Call /verify
+    // 2. Call /notify
 
     return res.json({
       success: true,
       payoutId,
-      verify: verifyResponse.data,
+      message: "Payout created. Waiting for Ozow webhooks...",
     });
 
   } catch (err) {
