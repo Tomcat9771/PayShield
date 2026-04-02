@@ -9,7 +9,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// 🔥 Helper to send EXACT Ozow-compliant response
 function sendOzowResponse(res, payload) {
   return res
     .status(200)
@@ -17,13 +16,7 @@ function sendOzowResponse(res, payload) {
     .send(JSON.stringify(payload));
 }
 
-/* ======================================================
-   🔐 OZOW VERIFY WEBHOOK (FINAL WORKING VERSION)
-====================================================== */
 router.post("/verify", async (req, res) => {
-  console.log("🔐 OZOW VERIFY WEBHOOK");
-  console.log(JSON.stringify(req.body, null, 2));
-
   try {
     const accessToken = req.headers.accesstoken;
 
@@ -82,10 +75,6 @@ router.post("/verify", async (req, res) => {
       .digest("hex");
 
     if (calculatedHash !== hashCheck) {
-      console.log("❌ HASH MISMATCH");
-      console.log("Expected:", calculatedHash);
-      console.log("Received:", hashCheck);
-
       return sendOzowResponse(res, {
         PayoutId: payoutId,
         IsVerified: false,
@@ -115,16 +104,12 @@ router.post("/verify", async (req, res) => {
       });
     }
 
-    console.log("✅ VERIFIED SUCCESS");
-    console.log("🔑 KEY:", payout.encryption_key);
-
     return sendOzowResponse(res, {
       PayoutId: payoutId,
       IsVerified: true,
       AccountNumberDecryptionKey: payout.encryption_key,
       Reason: "",
     });
-
   } catch (err) {
     console.error("❌ VERIFY ERROR:", err.message);
 
@@ -136,14 +121,7 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-/* ======================================================
-   ✅ OZOW NOTIFY WEBHOOK
-====================================================== */
-
 router.post("/notify", async (req, res) => {
-  console.log("🔥 OZOW NOTIFY WEBHOOK");
-  console.log(JSON.stringify(req.body, null, 2));
-
   try {
     const data = req.body;
 
@@ -152,8 +130,6 @@ router.post("/notify", async (req, res) => {
     const status = data.PayoutStatus?.Status;
     const subStatus = data.PayoutStatus?.SubStatus;
     const errorMessage = data.PayoutStatus?.ErrorMessage;
-
-    console.log(`📊 STATUS UPDATE: ${PayoutId} → status=${status} sub=${subStatus}`);
 
     const { data: existing } = await supabase
       .from("payouts")
@@ -168,47 +144,76 @@ router.post("/notify", async (req, res) => {
         .eq("merchant_ref", merchantRef);
     }
 
+    const payoutStatus =
+      status === 1 && subStatus === 201
+        ? "COMPLETED"
+        : status === 99
+        ? "FAILED"
+        : "PROCESSING";
+
     let updateData = {
       provider_ref: PayoutId,
       last_error: status === 99 ? errorMessage : null,
+      status: payoutStatus,
     };
 
-    if (status === 1 && subStatus === 201) {
-      updateData.status = "COMPLETED";
+    if (payoutStatus === "COMPLETED") {
       updateData.completed_at = new Date().toISOString();
-      updateData.last_error = null;
-    } else if (status === 99) {
-      updateData.status = "FAILED";
-    } else {
-      updateData.status = "PROCESSING";
     }
 
     let { data: updated } = await supabase
       .from("payouts")
       .update(updateData)
       .eq("provider_ref", PayoutId)
-      .select();
+      .select("id");
 
     if (!updated || updated.length === 0) {
-      await supabase
+      const fallback = await supabase
         .from("payouts")
         .update(updateData)
-        .eq("merchant_ref", merchantRef);
+        .eq("merchant_ref", merchantRef)
+        .select("id");
+
+      updated = fallback.data;
     }
 
-    console.log("✅ DB UPDATE COMPLETE");
+    const payoutId = updated?.[0]?.id;
+
+    if (payoutId) {
+      const transactionStatus =
+        payoutStatus === "COMPLETED"
+          ? "PAID_OUT"
+          : payoutStatus === "FAILED"
+          ? "FAILED"
+          : "PROCESSING";
+
+      const { data: attempts } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("payout_id", payoutId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const latestAttemptId = attempts?.[0]?.id;
+
+      if (latestAttemptId) {
+        await supabase
+          .from("transactions")
+          .update({
+            status: transactionStatus,
+            provider_ref: PayoutId,
+          })
+          .eq("id", latestAttemptId);
+      }
+    }
 
     return res.status(200).send("OK");
-
   } catch (err) {
     console.error("❌ NOTIFY ERROR:", err.message);
     return res.status(200).send("OK");
   }
 });
 
-/* ======================================================
-   🔁 OZOW COMPATIBILITY ROUTE
-====================================================== */
 router.post("/payout-verify", async (req, res) => {
   req.url = "/verify";
   return router.handle(req, res);
